@@ -1,10 +1,11 @@
-import React from 'react'; // <--- THIS LINE WAS MISSING OR BROKEN
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
-import './index.css'; // Keep this only if you have an index.css file
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import './index.css';
+import { AuthProvider } from "./context/AuthContext";
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <AuthProvider>
     <App />
-  </React.StrictMode>,
+  </AuthProvider>
 );
+

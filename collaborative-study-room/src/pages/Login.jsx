@@ -1,3 +1,5 @@
+import { useAuth } from "../context/AuthContext";
+import { useEffect } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth"; 
@@ -7,6 +9,13 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();   // ✅ ADD THIS HERE
+
+  useEffect(() => {             // ✅ ADD THIS HERE
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleLogin = async () => {
     try {

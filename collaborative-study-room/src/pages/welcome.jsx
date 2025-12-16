@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import welcomeImg from "../assets/welcome.png";
+
 
 function Welcome() {
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ function Welcome() {
         <div className="bg-white/80 rounded-[40px] p-8 shadow-xl">
 
           <img
-            src="/vite.svg"
+            src={welcomeImg}
             alt="illustration"
             className="w-40 mx-auto mb-6"
           />

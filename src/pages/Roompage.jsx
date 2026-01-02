@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import PomodoroTimer from "../components/PomodoroTimer";
 import TaskManager from "../components/TaskManager";
+import StudyTracker from "../components/StudyTracker";
 
 function RoomPage() {
   const { roomId } = useParams();
@@ -13,6 +14,8 @@ function RoomPage() {
 
       <PomodoroTimer roomId={roomId} />
       <TaskManager roomId={roomId} />
+      <StudyTracker roomId={roomId} />
+
     </div>
   );
 }

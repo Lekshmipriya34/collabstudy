@@ -6,26 +6,22 @@ import { useAuth } from "../context/AuthContext";
 function PomodoroTimer({ roomId }) {
   const { user } = useAuth();
 
-  // --- CONFIGURATION ---
-  const FOCUS_TIME = 25 * 60; // 25 mins in seconds
-  const BREAK_TIME = 5 * 60;  // 5 mins in seconds
+  // --- CONFIGURATION (Logic Unchanged) ---
+  const FOCUS_TIME = 25 * 60; 
+  const BREAK_TIME = 5 * 60;  
 
-  // --- STATE ---
+  // --- STATE (Logic Unchanged) ---
   const [timeLeft, setTimeLeft] = useState(FOCUS_TIME);
   const [isRunning, setIsRunning] = useState(false);
-  
-  // Plan Logic
-  const [selectedHours, setSelectedHours] = useState(1); // Default 1 hr
-  const [mode, setMode] = useState("focus"); // 'focus' or 'break'
+  const [selectedHours, setSelectedHours] = useState(1); 
+  const [mode, setMode] = useState("focus"); 
   const [cyclesTotal, setCyclesTotal] = useState(0);
   const [cyclesCompleted, setCyclesCompleted] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
 
-  // 1. Start the Plan based on Dropdown Selection
+  // --- LOGIC FUNCTIONS (Logic Unchanged) ---
   const handleStartPlan = () => {
-    // 1 Hour = 2 Full Cycles (25+5 + 25+5)
     const totalCycles = selectedHours * 2;
-    
     setCyclesTotal(totalCycles);
     setCyclesCompleted(0);
     setMode("focus");
@@ -34,7 +30,6 @@ function PomodoroTimer({ roomId }) {
     setIsRunning(true);
   };
 
-  // 2. Save Session to Firebase (Only Focus Sessions)
   const saveSession = async () => {
     try {
       await addDoc(collection(db, "users", user.uid, "studySessions"), {
@@ -43,22 +38,16 @@ function PomodoroTimer({ roomId }) {
         roomId: roomId || "personal",
         createdAt: serverTimestamp(),
       });
-      console.log("Session saved!");
     } catch (error) {
       console.error("Error saving session:", error);
     }
   };
 
-  // 3. Switch Phases (Focus <-> Break)
   const switchPhase = () => {
     if (mode === "focus") {
-      // --- FOCUS ENDED ---
-      saveSession(); // Save the 25 mins
-      
+      saveSession(); 
       const newCompleted = cyclesCompleted + 1;
       setCyclesCompleted(newCompleted);
-
-      // Check if plan finished
       if (newCompleted >= cyclesTotal) {
         setIsSessionActive(false);
         setIsRunning(false);
@@ -67,23 +56,16 @@ function PomodoroTimer({ roomId }) {
         setTimeLeft(FOCUS_TIME);
         return;
       }
-
-      // Start Break
       setMode("break");
       setTimeLeft(BREAK_TIME);
-      // Optional: Play a sound here
-      
     } else {
-      // --- BREAK ENDED ---
       setMode("focus");
       setTimeLeft(FOCUS_TIME);
     }
   };
 
-  // 4. Timer Interval Logic
   useEffect(() => {
     let interval = null;
-
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prevTime) => {
@@ -98,11 +80,9 @@ function PomodoroTimer({ roomId }) {
     } else {
       clearInterval(interval);
     }
-
     return () => clearInterval(interval);
   }, [isRunning, mode, cyclesCompleted, cyclesTotal]); 
 
-  // Format MM:SS
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -117,77 +97,76 @@ function PomodoroTimer({ roomId }) {
     setTimeLeft(FOCUS_TIME);
   };
 
+  // --- UI DYNAMIC THEME HELPERS ---
+  const isBreak = mode === "break";
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center border-t-4 border-indigo-600">
+    <div className={`p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-2 transition-all duration-700 flex flex-col items-center ${
+      isBreak 
+        ? "bg-emerald-50/50 border-emerald-100 backdrop-blur-md" 
+        : "bg-white border-purple-50"
+    }`}>
       
       {!isSessionActive ? (
-        // --- VIEW A: SELECTION SCREEN ---
-        <div className="text-center w-full">
-          <h2 className="text-xl font-bold mb-2 text-gray-800">Pomodoro Timer</h2>
-          <p className="text-gray-500 text-sm mb-4">How long do you want to study?</p>
+        <div className="text-center w-full space-y-6">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Focus Timer</h2>
+            <p className="text-slate-400 text-sm mt-1">Set your study goal</p>
+          </div>
           
-          <div className="flex flex-col gap-4">
-            {/* The Dropdown */}
-            <div className="relative">
-              <select 
-                value={selectedHours}
-                onChange={(e) => setSelectedHours(Number(e.target.value))}
-                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
-              >
-                {/* Generate options 1 to 18 */}
-                {[...Array(18)].map((_, i) => {
-                  const hour = i + 1;
-                  return (
-                    <option key={hour} value={hour}>
-                      {hour} Hour{hour > 1 ? "s" : ""} ({hour * 2} Cycles)
-                    </option>
-                  );
-                })}
-              </select>
-              {/* Dropdown Arrow Icon (Optional visual) */}
-              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                ▼
-              </div>
-            </div>
+          <div className="space-y-4">
+            <select 
+              value={selectedHours}
+              onChange={(e) => setSelectedHours(Number(e.target.value))}
+              className="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50/50 text-slate-700 font-bold focus:border-purple-400 outline-none appearance-none cursor-pointer"
+            >
+              {[...Array(18)].map((_, i) => (
+                <option key={i+1} value={i+1}>{i+1} {i+1 > 1 ? "Hours" : "Hour"} ({ (i+1)*2 } Cycles)</option>
+              ))}
+            </select>
 
             <button 
               onClick={handleStartPlan}
-              className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md"
+              className="w-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white p-4 rounded-2xl font-bold hover:shadow-xl hover:shadow-indigo-100 transition-all"
             >
               Start Study Plan
             </button>
           </div>
           
-          <p className="text-xs text-gray-400 mt-4">
-            Includes 5-min breaks between sessions.
+          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+             5-min breaks included
           </p>
         </div>
       ) : (
-        // --- VIEW B: ACTIVE TIMER ---
         <div className="text-center w-full">
-          <div className="flex justify-between items-center mb-4 border-b pb-2">
-            <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${
-              mode === "focus" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"
+          <div className="flex justify-between items-center mb-8">
+            {/* DYNAMIC BADGE COLOR */}
+            <span className={`text-[11px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-sm transition-all duration-500 ${
+              isBreak 
+                ? "bg-emerald-500 text-white ring-4 ring-emerald-100" 
+                : "bg-rose-500 text-white ring-4 ring-rose-100"
             }`}>
-              {mode === "focus" ? "🔥 Focus Mode" : "☕ Break Time"}
+              {isBreak ? "☕ Break Time" : "🔥 Focus Mode"}
             </span>
-            <span className="text-xs text-gray-500 font-mono">
-              Cycle {Math.ceil((cyclesCompleted + 1) / 2) || 1} / {cyclesTotal / 2} Hours
+            <span className="text-[11px] font-bold text-slate-400 bg-slate-100/50 px-3 py-1.5 rounded-full">
+              Cycle {Math.ceil((cyclesCompleted + 1) / 2)} of {cyclesTotal / 2}
             </span>
           </div>
 
-          <div className={`text-6xl font-mono mb-6 transition-colors duration-500 ${
-             mode === "break" ? "text-green-500" : "text-gray-800"
+          {/* DYNAMIC TIMER TEXT COLOR */}
+          <div className={`text-8xl font-black mb-8 tracking-tighter tabular-nums transition-colors duration-500 ${
+              isBreak ? "text-emerald-600" : "text-slate-800"
           }`}>
             {formatTime(timeLeft)}
           </div>
 
-          {/* Controls */}
-          <div className="flex justify-center gap-3">
+          <div className="flex gap-4">
             <button 
               onClick={() => setIsRunning(!isRunning)}
-              className={`px-6 py-2 rounded font-semibold text-white transition ${
-                isRunning ? "bg-yellow-500 hover:bg-yellow-600" : "bg-indigo-600 hover:bg-indigo-700"
+              className={`flex-[2] py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg ${
+                isRunning 
+                  ? "bg-amber-400 text-white hover:bg-amber-500 shadow-amber-100" 
+                  : (isBreak ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-indigo-600 text-white hover:bg-indigo-700")
               }`}
             >
               {isRunning ? "Pause" : "Resume"}
@@ -195,20 +174,29 @@ function PomodoroTimer({ roomId }) {
 
             <button 
               onClick={handleReset}
-              className="px-6 py-2 rounded font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+              className="flex-1 py-4 rounded-2xl font-bold text-sm uppercase tracking-widest bg-slate-200/50 text-slate-500 hover:bg-slate-200 transition-all"
             >
-              Stop & Reset
+              Reset
             </button>
           </div>
           
-          <div className="mt-6 w-full bg-gray-200 rounded-full h-2.5">
-            <div 
-              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-1000" 
-              style={{ width: `${(cyclesCompleted / cyclesTotal) * 100}%` }}
-            ></div>
+          <div className="mt-10">
+            <div className="w-full bg-slate-200/50 rounded-full h-3 overflow-hidden">
+              {/* DYNAMIC PROGRESS BAR COLOR */}
+              <div 
+                className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                    isBreak ? "bg-emerald-500" : "bg-gradient-to-r from-purple-500 to-indigo-600"
+                }`} 
+                style={{ width: `${(cyclesCompleted / cyclesTotal) * 100}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between mt-3">
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Session Progress</span>
+               <span className={`text-[10px] font-bold ${isBreak ? "text-emerald-600" : "text-indigo-600"}`}>
+                 {Math.round((cyclesCompleted / cyclesTotal) * 100)}%
+               </span>
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mt-1 text-right">Progress</p>
-
         </div>
       )}
     </div>

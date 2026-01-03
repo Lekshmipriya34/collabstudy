@@ -1,3 +1,4 @@
+import ShoutOuts from "../components/ShoutOuts";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { signOut } from "firebase/auth";        
@@ -12,6 +13,7 @@ import TaskManager from "../components/TaskManager";
 import PomodoroTimer from "../components/Pomodoro"; 
 import StudyTracker from "../components/StudyTracker"; 
 import RoomSidebar from "../components/RoomSidebar";
+
 
 function Dashboard() {
   const { user } = useAuth(); 
@@ -49,18 +51,17 @@ function Dashboard() {
     }
   };
 
-  return (
-    // 1. UPDATED BACKGROUND & FONT (Matching Signup)
+ return (
     <div className="min-h-screen bg-gradient-to-b from-[#e879f9] to-[#4c1d95] p-6 font-mono text-white">
       
-      {/* HEADER */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
             HI, {displayName} 👋
           </h1>
-          <p className="text-purple-200 text-sm mt-1 tracking-wide">
-            WELCOME BACK TO YOUR WORKSPACE.
+          <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
+            Welcome back to your workspace.
           </p>
         </div>
         
@@ -74,7 +75,6 @@ function Dashboard() {
             </button>
           )}
 
-          {/* 2. UPDATED BUTTON STYLE (Matching Register Button vibe but smaller) */}
           <button 
             onClick={handleLogout}
             className="bg-[#1a1a1a] border-2 border-[#f0abfc] text-white px-6 py-2 rounded-full shadow-lg hover:bg-[#d8a4e2] hover:text-black hover:border-[#d8a4e2] transition-all duration-300 font-bold tracking-wider text-sm"
@@ -85,57 +85,66 @@ function Dashboard() {
       </div>
 
       {/* DASHBOARD CONTENT */}
-      {selectedRoomId ? (
-        // --- INSIDE A ROOM VIEW ---
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          {/* Main Content Area (Tasks) */}
-          <div className="lg:col-span-3">
-            <TaskManager roomId={selectedRoomId} />
-          </div>
+    {selectedRoomId ? (
+  /* ===== INSIDE ROOM VIEW ===== */
+  <div className="relative">
 
-          {/* Right Sidebar Area */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Timer at the TOP */}
-            <PomodoroTimer roomId={selectedRoomId} />
-            
-            {/* Sidebar BELOW */}
-            <RoomSidebar roomId={selectedRoomId} />
-            
-          </div>
+    {/* Floating ShoutOuts bar */}
+    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000]">
+      <ShoutOuts roomId={selectedRoomId} />
+    </div>
 
+    {/* Main room layout */}
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+      {/* Tasks */}
+      <div className="lg:col-span-3">
+        <TaskManager roomId={selectedRoomId} />
+      </div>
+
+      {/* Right sidebar */}
+      <div className="lg:col-span-1 space-y-6">
+        <PomodoroTimer roomId={selectedRoomId} />
+
+        <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
+          <RoomSidebar roomId={selectedRoomId} />
         </div>
-      ) : (
-        // --- MAIN DASHBOARD VIEW ---
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Left Column */}
-          <div className="space-y-6">
-            <StudyTracker />
-            
-            {/* 3. WRAPPER FOR CREATE/JOIN TO LOOK LIKE A 'SECTION' */}
-            <div className="bg-white/10 border-2 border-white/20 p-6 rounded-xl backdrop-blur-sm">
-              <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
-                ROOM CONTROLS
-              </h2>
-              <div className="space-y-6">
-                <CreateRoom />
-                <div className="border-t border-white/10 pt-6">
-                   <JoinRoom />
-                </div>
-              </div>
-            </div>
-          </div>
+      </div>
 
-          {/* Right Column */}
-          <div>
-            <RoomList onSelectRoom={setSelectedRoomId} />
+    </div>
+  </div>
+) : (
+  /* ===== MAIN DASHBOARD VIEW ===== */
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div className="space-y-6">
+      <StudyTracker />
+
+      <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+        <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
+          ROOM CONTROLS
+        </h2>
+        <div className="space-y-6">
+          <CreateRoom />
+          <div className="border-t border-white/10 pt-6">
+            <JoinRoom />
           </div>
         </div>
-      )}
+      </div>
+    </div>
+
+    <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+      <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
+        YOUR STUDY ROOMS
+      </h2>
+      <RoomList onSelectRoom={setSelectedRoomId} />
+    </div>
+
+  </div>
+)}
     </div>
   );
 }
 
 export default Dashboard;
+

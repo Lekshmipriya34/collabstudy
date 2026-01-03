@@ -11,10 +11,11 @@ import RoomList from "../components/RoomList";
 import TaskManager from "../components/TaskManager";
 import PomodoroTimer from "../components/Pomodoro"; 
 import StudyTracker from "../components/StudyTracker"; 
+import RoomSidebar from "../components/RoomSidebar"; // ✅ 1. IMPORT SIDEBAR
 
 function Dashboard() {
   const { user } = useAuth(); 
-  const [displayName, setDisplayName] = useState("Scholar"); // Renamed state for clarity
+  const [displayName, setDisplayName] = useState("Scholar");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const navigate = useNavigate(); 
 
@@ -28,7 +29,6 @@ function Dashboard() {
 
           if (userSnapshot.exists()) {
             const data = userSnapshot.data();
-            // ✅ CHANGE: Priority is now fullName -> username -> "Scholar"
             setDisplayName(data.fullName || data.username || "Scholar");
           }
         } catch (error) {
@@ -53,8 +53,6 @@ function Dashboard() {
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
-        
-        {/* GREETING */}
         <div>
           <h1 className="text-3xl font-bold text-gray-800">
             Hi, {displayName} 👋
@@ -62,7 +60,6 @@ function Dashboard() {
           <p className="text-gray-500 text-sm">Welcome back to your workspace.</p>
         </div>
         
-        {/* CONTROLS */}
         <div className="flex items-center gap-4">
           {selectedRoomId && (
             <button 
@@ -84,15 +81,25 @@ function Dashboard() {
 
       {/* DASHBOARD CONTENT */}
       {selectedRoomId ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        // --- INSIDE A ROOM VIEW ---
+        // ✅ 2. Changed Grid to 4 Columns (3 for Tasks, 1 for Sidebar)
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          
+          {/* Main Content Area */}
+          <div className="lg:col-span-3">
             <TaskManager roomId={selectedRoomId} />
           </div>
-          <div className="space-y-6">
+
+          {/* Right Sidebar Area */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* ✅ 3. Added RoomSidebar here */}
+            <RoomSidebar roomId={selectedRoomId} />
             <PomodoroTimer roomId={selectedRoomId} />
           </div>
+
         </div>
       ) : (
+        // --- MAIN DASHBOARD VIEW ---
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <StudyTracker />

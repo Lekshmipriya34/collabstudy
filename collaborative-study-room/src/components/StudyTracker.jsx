@@ -1,100 +1,123 @@
 import { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { addDoc, collection, serverTimestamp, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
-function StudyTracker({ roomId }) {
+function StudyTracker() {
   const { user } = useAuth();
-  const [isStudying, setIsStudying] = useState(false);
-  const [startTime, setStartTime] = useState(null);
-  const [todayMinutes, setTodayMinutes] = useState(0);
+  const [contributionData, setContributionData] = useState({});
+  const [totalMinutesYear, setTotalMinutesYear] = useState(0);
 
-  // Helper to get the correct collection reference
-  const getSessionCollection = () => {
-    if (roomId) {
-      // Room Mode: Save to the specific room
-      return collection(db, "rooms", roomId, "studySessions");
-    } else {
-      // Dashboard Mode: Save to user's personal logs
-      return collection(db, "users", user.uid, "studySessions");
-    }
+  // 1. Helper: Determine Color Intensity (Purple Theme)
+  const getColor = (minutes) => {
+    if (minutes === 0) return "bg-gray-100";      // No activity
+    if (minutes < 30) return "bg-purple-200";     // Light Purple
+    if (minutes < 60) return "bg-purple-400";     // Medium Purple
+    return "bg-purple-700";                       // Deep Purple (Target)
   };
 
-  const startStudy = () => {
-    setStartTime(Date.now());
-    setIsStudying(true);
-  };
-
-  const stopStudy = async () => {
-    if (!startTime) return;
+  // 2. Helper: Generate the last 365 days array
+  const generateYearGrid = () => {
+    const days = [];
+    const today = new Date();
     
-    const endTime = Date.now();
-    const duration = Math.floor((endTime - startTime) / 60000); // Duration in minutes
-
-    // Prevent saving 0-minute sessions if clicked too fast
-    if (duration > 0) {
-      await addDoc(getSessionCollection(), {
-        userId: user.uid,
-        duration,
-        createdAt: serverTimestamp(),
-        roomId: roomId || "personal", // specific room ID or 'personal'
+    // We want 52 weeks roughly, so loop back 365 days
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toDateString(); // "Fri Oct 20 2023"
+      days.push({
+        date: d,
+        dateStr: dateStr,
       });
     }
-
-    setIsStudying(false);
-    setStartTime(null);
+    return days;
   };
+
+  const daysGrid = generateYearGrid();
 
   useEffect(() => {
     if (!user) return;
 
-    const sessionRef = getSessionCollection();
+    const oneYearAgo = new Date();
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
-    // Query: Get all sessions for this user in this context
     const q = query(
-      sessionRef,
-      where("userId", "==", user.uid)
+      collection(db, "users", user.uid, "studySessions"),
+      where("createdAt", ">", oneYearAgo)
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const total = snapshot.docs.reduce(
-        (sum, doc) => sum + (doc.data().duration || 0),
-        0
-      );
-      setTodayMinutes(total);
+      let dataMap = {};
+      let total = 0;
+
+      snapshot.docs.forEach((doc) => {
+        const session = doc.data();
+        if (!session.createdAt) return;
+
+        const dateStr = session.createdAt.toDate().toDateString();
+        
+        // Aggregate minutes for that day
+        if (dataMap[dateStr]) {
+          dataMap[dateStr] += session.duration;
+        } else {
+          dataMap[dateStr] = session.duration;
+        }
+        total += session.duration;
+      });
+
+      setContributionData(dataMap);
+      setTotalMinutesYear(total);
     });
 
     return () => unsub();
-  }, [roomId, user]);
+  }, [user]);
 
   return (
-    <div className="bg-white p-5 rounded-lg shadow-md mb-6">
-      <h2 className="text-xl font-bold mb-3">
-        {roomId ? "Room Study Tracker" : "Personal Study Tracker"}
-      </h2>
-
-      <p className="mb-4 text-gray-600">
-        Total recorded time: <span className="font-semibold text-blue-600">{todayMinutes} mins</span>
-      </p>
-
-      {!isStudying ? (
-        <button
-          onClick={startStudy}
-          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition w-full md:w-auto"
-        >
-          Start Studying
-        </button>
-      ) : (
-        <div className="flex items-center gap-4">
-          <button
-            onClick={stopStudy}
-            className="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition"
-          >
-            Stop & Save
-          </button>
-          <span className="animate-pulse text-green-600 font-semibold">Studying now...</span>
+    <div className="bg-white p-6 rounded-lg shadow-md mb-6 overflow-hidden border border-purple-100">
+      <div className="flex justify-between items-end mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">Study Tracker</h2>
+          <p className="text-sm text-gray-500">
+            <span className="font-bold text-purple-700">{totalMinutesYear} minutes</span> studied in the last year
+          </p>
         </div>
-      )}
+        
+        {/* Legend */}
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span>Less</span>
+          <div className="w-3 h-3 bg-gray-100 rounded-sm"></div>
+          <div className="w-3 h-3 bg-purple-200 rounded-sm"></div>
+          <div className="w-3 h-3 bg-purple-400 rounded-sm"></div>
+          <div className="w-3 h-3 bg-purple-700 rounded-sm"></div>
+          <span>More</span>
+        </div>
+      </div>
+
+      {/* --- THE CONTRIBUTION GRID --- */}
+      <div className="overflow-x-auto pb-2">
+        <div 
+           className="grid grid-flow-col gap-1 auto-cols-[minmax(10px,_1fr)] grid-rows-7 h-32 w-max"
+        >
+          {daysGrid.map((dayItem, index) => {
+            const minutes = contributionData[dayItem.dateStr] || 0;
+            const colorClass = getColor(minutes);
+
+            return (
+              <div
+                key={index}
+                className={`w-3 h-3 rounded-sm ${colorClass} hover:ring-2 hover:ring-purple-400 transition cursor-pointer relative group`}
+              >
+                {/* TOOLTIP ON HOVER */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs p-2 rounded whitespace-nowrap z-50 pointer-events-none">
+                  <p className="font-semibold text-purple-200">{minutes} minutes</p>
+                  <p className="text-gray-400">{dayItem.dateStr}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

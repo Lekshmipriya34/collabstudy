@@ -3,7 +3,7 @@ import { db } from "../firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
-function PomodoroTimer({ roomId }) {
+function PomodoroTimer({ roomId, onRunningChange }) {
   const { user } = useAuth();
 
   // --- CONFIGURATION (Logic Unchanged) ---

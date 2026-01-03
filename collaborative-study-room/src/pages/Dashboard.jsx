@@ -19,6 +19,8 @@ function Dashboard() {
   const { user } = useAuth(); 
   const [displayName, setDisplayName] = useState("SCHOLAR"); // Default uppercase for retro vibe
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [isFlowActive, setIsFlowActive] = useState(false);
+
   const navigate = useNavigate(); 
 
   useEffect(() => {
@@ -104,10 +106,16 @@ function Dashboard() {
 
       {/* Right sidebar */}
       <div className="lg:col-span-1 space-y-6">
-        <PomodoroTimer roomId={selectedRoomId} />
+        <PomodoroTimer
+          roomId={selectedRoomId}
+          onRunningChange={setIsFlowActive}
+        />
+
 
         <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
-          <RoomSidebar roomId={selectedRoomId} />
+         <RoomSidebar roomId={selectedRoomId} isRunning={true} />
+
+
         </div>
       </div>
 

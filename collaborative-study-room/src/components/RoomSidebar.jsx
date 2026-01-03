@@ -1,4 +1,4 @@
-function RoomSidebar({ roomId }) {
+function RoomSidebar({ roomId,isRunning  }) {
   // Temporary static data (safe for demo & UI)
   const inviteCode = "JfR6yvKbY0R2GtLOffBy";
 
@@ -49,9 +49,17 @@ function RoomSidebar({ roomId }) {
               className="flex items-center justify-between bg-white/10 rounded-xl p-3"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-300 text-purple-900 flex items-center justify-center font-bold">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-500
+                  ${isRunning
+                    ? "bg-purple-400 text-white shadow-[0_0_20px_rgba(168,85,247,0.9)]"
+                    : "bg-purple-300 text-purple-900"
+                  }`}
+>
+
                   {member.initial}
                 </div>
+
                 <div>
                   <p className="font-medium">{member.name}</p>
                   <p className="text-xs text-purple-200">

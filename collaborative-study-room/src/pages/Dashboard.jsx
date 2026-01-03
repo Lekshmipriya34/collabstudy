@@ -120,7 +120,7 @@ function Dashboard() {
     <div className="space-y-6">
       <StudyTracker />
 
-      <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+<div className="glass-card p-6">
         <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
           ROOM CONTROLS
         </h2>
@@ -135,7 +135,7 @@ function Dashboard() {
 
     <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
       <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
-        YOUR STUDY ROOMS
+        YOUR STUDY ROOM
       </h2>
       <RoomList onSelectRoom={setSelectedRoomId} />
     </div>

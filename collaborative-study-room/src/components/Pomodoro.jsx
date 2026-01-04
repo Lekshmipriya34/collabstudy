@@ -118,12 +118,18 @@ function PomodoroTimer({ roomId, onRunningChange }) {
             <select 
               value={selectedHours}
               onChange={(e) => setSelectedHours(Number(e.target.value))}
-              className="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50/50 text-slate-700 font-bold focus:border-purple-400 outline-none appearance-none cursor-pointer"
+              className="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50/50 text-slate-700 font-bold"
             >
-              {[...Array(18)].map((_, i) => (
-                <option key={i+1} value={i+1}>{i+1} {i+1 > 1 ? "Hours" : "Hour"} ({ (i+1)*2 } Cycles)</option>
-              ))}
-            </select>
+              
+
+          {/* 🔹 NORMAL OPTIONS */}
+          {[...Array(18)].map((_, i) => (
+            <option key={i+1} value={i+1}>
+              {i+1} {i+1 > 1 ? "Hours" : "Hour"} ({(i+1)*2} Cycles)
+            </option>
+          ))}
+        </select>
+
 
             <button 
               onClick={handleStartPlan}

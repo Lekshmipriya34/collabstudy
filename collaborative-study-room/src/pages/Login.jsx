@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"; // 1. Import reset function
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase"; 
 import { useAuth } from "../context/AuthContext";
-import welcomeImg from "../assets/welcome.png"; // Assuming you want the image here too
+import welcomeImg from "../assets/welcome.png";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState(""); // For success messages
+  const [message, setMessage] = useState(""); 
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
@@ -21,7 +21,6 @@ function Login() {
     }
   }, [user, navigate]);
 
-  // --- LOGIN LOGIC ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -30,9 +29,7 @@ function Login() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // AuthContext detects change and useEffect redirects to Dashboard
     } catch (error) {
-      console.log("LOGIN ERROR:", error.code);
       if (error.code === "auth/invalid-credential") {
         setError("Incorrect email or password.");
       } else if (error.code === "auth/too-many-requests") {
@@ -44,7 +41,6 @@ function Login() {
     }
   };
 
-  // --- FORGOT PASSWORD LOGIC ---
   const handleResetPassword = async () => {
     if (!email) {
       setError("Please enter your email address above to reset your password.");
@@ -57,7 +53,6 @@ function Login() {
       await sendPasswordResetEmail(auth, email);
       setMessage("Check your inbox! We sent a password reset link.");
     } catch (error) {
-      console.error(error);
       if (error.code === "auth/user-not-found") {
         setError("No account found with this email.");
       } else {
@@ -66,88 +61,93 @@ function Login() {
     }
   };
 
-  // Shared Input Style (Retro Theme)
-  const inputStyle = "w-full bg-[#1a1a1a] border-2 border-[#f0abfc] text-white placeholder-gray-400 px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm";
+  // Modern Input Style
+  const inputStyle = "w-full bg-white/10 border border-white/20 text-white placeholder-purple-200 px-5 py-4 rounded-2xl focus:outline-none focus:border-purple-300 focus:bg-white/20 transition-all font-medium text-sm backdrop-blur-sm";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e879f9] to-[#4c1d95] flex flex-col items-center justify-center px-4 py-6 font-mono">
+    <div className="min-h-screen bg-gradient-to-br from-[#e879f9] via-[#7c3aed] to-[#4c1d95] flex items-center justify-center px-4 relative overflow-hidden font-sans">
       
-      {/* HEADER */}
-      <h1 className="text-white text-4xl font-bold tracking-widest mb-4 drop-shadow-md">
-        CLOCKEDIN
-      </h1>
+      {/* Background Decorative Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-white/20 rounded-full blur-[100px]"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 bg-purple-900/40 rounded-full blur-[100px]"></div>
 
-      <div className="mb-6">
-        <img 
-          src={welcomeImg} 
-          alt="Illustration" 
-          className="w-40 mix-blend-screen opacity-90 grayscale contrast-125 brightness-150" 
-        />
-      </div>
-
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-[2.5rem] shadow-2xl z-10">
         
-        {/* MESSAGES */}
+        {/* HEADER */}
+        <div className="flex flex-col items-center mb-8">
+            <h1 className="text-white text-3xl font-black tracking-tighter mb-2 italic">
+              CLOCKED<span className="text-purple-200">IN</span>
+            </h1>
+            <img 
+              src={welcomeImg} 
+              alt="Welcome Illustration" 
+              className="w-28 opacity-90 drop-shadow-2xl" 
+            />
+        </div>
+
+        {/* STATUS MESSAGES */}
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-white px-3 py-2 rounded text-center text-xs mb-4">
+          <div className="bg-rose-500/20 border border-rose-500/50 text-rose-100 px-4 py-3 rounded-2xl text-center text-[11px] mb-6 font-bold uppercase tracking-widest">
             {error}
           </div>
         )}
         {message && (
-          <div className="bg-green-500/20 border border-green-500 text-white px-3 py-2 rounded text-center text-xs mb-4">
+          <div className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-100 px-4 py-3 rounded-2xl text-center text-[11px] mb-6 font-bold uppercase tracking-widest">
             {message}
           </div>
         )}
 
-        {/* FORM */}
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputStyle}
-            required
-          />
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-purple-100 uppercase tracking-widest ml-2">Email Address</label>
+            <input
+              type="email"
+              placeholder="scholar@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputStyle}
+              required
+            />
+          </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputStyle}
-            required
-          />
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-purple-100 uppercase tracking-widest ml-2">Password</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputStyle}
+              required
+            />
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full bg-[#e8bdf0] text-black text-xl font-bold py-3 rounded-full shadow-lg hover:bg-[#d8a4e2] transition-transform transform active:scale-95 tracking-wide"
+            className="w-full bg-white text-purple-900 py-4 rounded-2xl font-black shadow-lg shadow-purple-900/20 hover:bg-purple-50 transition-all active:scale-95 tracking-widest text-sm mt-4 uppercase"
           >
-            {loading ? "LOGGING IN..." : "LOGIN"}
+            {loading ? "AUTHENTICATING..." : "ENTER WORKSPACE"}
           </button>
         </form>
 
-        {/* FORGOT PASSWORD & SIGNUP LINKS */}
-        <div className="mt-6 flex flex-col items-center gap-2">
-          
-          {/* Forgot Password Button */}
+        <div className="mt-8 flex flex-col items-center gap-4">
           <button 
             onClick={handleResetPassword}
-            className="text-purple-200 text-sm hover:text-white hover:underline transition"
+            className="text-purple-100 text-[11px] font-bold uppercase tracking-widest hover:text-white transition opacity-70 hover:opacity-100"
           >
             Forgot Password?
           </button>
 
-          <p className="text-white text-sm mt-2">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-[#f0abfc] font-bold hover:underline">
-              Register here!
+          <p className="text-purple-100/60 text-xs font-medium">
+            New here?{" "}
+            <Link to="/signup" className="text-white font-black hover:underline underline-offset-4">
+              CREATE ACCOUNT
             </Link>
           </p>
           
-          <Link to="/" className="text-xs text-gray-400 hover:text-white mt-4 underline">
-            Go back home
+          <Link to="/" className="text-[10px] text-white/30 hover:text-white font-bold tracking-widest uppercase transition mt-2">
+            ← Home
           </Link>
         </div>
       </div>

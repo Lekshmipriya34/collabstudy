@@ -16,9 +16,12 @@ function Welcome() {
       {/* 🌟 CONTENT */}
       <div className="relative z-10 w-full max-w-sm text-center">
 
-        <h1 className="text-white text-3xl font-extrabold tracking-widest mb-6">
-          CLOCKEDIN
+         <h1 className="text-3xl font-extrabold tracking-widest mb-6">
+          <span className="text-white">CLOCK</span>
+          <span className="text-fuchsia-400">ED</span>
+          <span className="text-white">IN</span>
         </h1>
+
 
         <div className="bg-white/20 backdrop-blur-xl rounded-[40px] p-8 shadow-2xl border border-white/30">
 

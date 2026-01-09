@@ -1,1 +1,78 @@
 @import "tailwindcss"; 
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20vh) scale(1.2);
+  }
+  100% {
+    transform: translateY(-100vh) scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-float-up {
+  animation: float-up 2s ease-in forwards;
+}
+
+/* ===== Global Glassmorphism Card ===== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2.5rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================= */
+/* FLOW STATE GLOW EFFECT */
+/* ============================= */
+
+.flow-glow {
+  box-shadow:
+    0 0 15px rgba(168, 85, 247, 0.6),
+    0 0 30px rgba(168, 85, 247, 0.5),
+    0 0 60px rgba(168, 85, 247, 0.4);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.flow-glow {
+  box-shadow:
+    0 0 12px rgba(168, 85, 247, 0.9),
+    0 0 24px rgba(168, 85, 247, 0.6),
+    0 0 40px rgba(168, 85, 247, 0.4);
+  animation: pulseGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.6); }
+  50% { box-shadow: 0 0 35px rgba(168, 85, 247, 1); }
+  100% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.6); }
+}
+
+@keyframes floatSlow {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(40px, -60px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.6;
+  }
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  animation: floatSlow 14s ease-in-out infinite;
+}
+

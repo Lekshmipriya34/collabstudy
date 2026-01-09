@@ -1,3 +1,4 @@
+import ShoutOuts from "../components/ShoutOuts";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { signOut } from "firebase/auth";        
@@ -15,8 +16,12 @@ import RoomSidebar from "../components/RoomSidebar";
 
 function Dashboard() {
   const { user } = useAuth(); 
-  const [displayName, setDisplayName] = useState("SCHOLAR"); // Default uppercase for retro vibe
+  const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+
+  // 🔑 IMPORTANT: track focus / break
+  const [isFlowActive, setIsFlowActive] = useState("focus");
+
   const navigate = useNavigate(); 
 
   useEffect(() => {
@@ -29,7 +34,7 @@ function Dashboard() {
           if (userSnapshot.exists()) {
             const data = userSnapshot.data();
             const name = data.fullName || data.username || "Scholar";
-            setDisplayName(name.toUpperCase()); // Force uppercase for aesthetic
+            setDisplayName(name.toUpperCase());
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -50,8 +55,16 @@ function Dashboard() {
   };
 
   return (
-    // 1. UPDATED BACKGROUND & FONT (Matching Signup)
-    <div className="min-h-screen bg-gradient-to-b from-[#e879f9] to-[#4c1d95] p-6 font-mono text-white">
+    /* 🌈 DYNAMIC BACKGROUND (FOCUS ↔ BREAK) */
+    <div
+      className={`min-h-screen p-6 font-mono text-white transition-all duration-1000
+        ${
+          isFlowActive === "break"
+            ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-700"
+            : "bg-gradient-to-b from-[#e879f9] to-[#4c1d95]"
+        }
+      `}
+    >
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -59,8 +72,8 @@ function Dashboard() {
           <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
             HI, {displayName} 👋
           </h1>
-          <p className="text-purple-200 text-sm mt-1 tracking-wide">
-            WELCOME BACK TO YOUR WORKSPACE.
+          <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
+            Welcome back to your workspace.
           </p>
         </div>
         
@@ -74,7 +87,6 @@ function Dashboard() {
             </button>
           )}
 
-          {/* 2. UPDATED BUTTON STYLE (Matching Register Button vibe but smaller) */}
           <button 
             onClick={handleLogout}
             className="bg-[#1a1a1a] border-2 border-[#f0abfc] text-white px-6 py-2 rounded-full shadow-lg hover:bg-[#d8a4e2] hover:text-black hover:border-[#d8a4e2] transition-all duration-300 font-bold tracking-wider text-sm"
@@ -86,52 +98,62 @@ function Dashboard() {
 
       {/* DASHBOARD CONTENT */}
       {selectedRoomId ? (
-        // --- INSIDE A ROOM VIEW ---
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          {/* Main Content Area (Tasks) */}
-          <div className="lg:col-span-3">
-            <TaskManager roomId={selectedRoomId} />
+        /* ===== INSIDE ROOM VIEW ===== */
+        <div className="relative">
+
+          {/* Floating ShoutOuts */}
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000]">
+            <ShoutOuts roomId={selectedRoomId} />
           </div>
 
-          {/* Right Sidebar Area */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Timer at the TOP */}
-            <PomodoroTimer roomId={selectedRoomId} />
-            
-            {/* Sidebar BELOW */}
-            <RoomSidebar roomId={selectedRoomId} />
-            
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
+            {/* Tasks */}
+            <div className="lg:col-span-3">
+              <TaskManager roomId={selectedRoomId} />
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              <PomodoroTimer
+                roomId={selectedRoomId}
+                onRunningChange={setIsFlowActive} // 🔑 CONNECTED
+              />
+
+              <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
+                <RoomSidebar roomId={selectedRoomId} isRunning={true} />
+              </div>
+            </div>
+
+          </div>
         </div>
       ) : (
-        // --- MAIN DASHBOARD VIEW ---
+        /* ===== MAIN DASHBOARD VIEW ===== */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Left Column */}
+
           <div className="space-y-6">
             <StudyTracker />
-            
-            {/* 3. WRAPPER FOR CREATE/JOIN TO LOOK LIKE A 'SECTION' */}
-            <div className="bg-white/10 border-2 border-white/20 p-6 rounded-xl backdrop-blur-sm">
+
+            <div className="glass-card p-6">
               <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
                 ROOM CONTROLS
               </h2>
               <div className="space-y-6">
                 <CreateRoom />
                 <div className="border-t border-white/10 pt-6">
-                   <JoinRoom />
+                  <JoinRoom />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column */}
-          <div>
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+            <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
+              YOUR STUDY ROOM
+            </h2>
             <RoomList onSelectRoom={setSelectedRoomId} />
           </div>
+
         </div>
       )}
     </div>

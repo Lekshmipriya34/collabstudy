@@ -21,11 +21,11 @@ function TaskManager({ roomId }) {
   useEffect(() => {
     if (!roomId) return;
     const taskRef = collection(db, "rooms", roomId, "tasks");
-    // FIX: Order by createdAt (serverTimestamp) rather than deadline string.
-    // Deadline is a "YYYY-MM-DD" string so it DOES sort lexicographically correctly,
-    // but createdAt gives a more stable, always-present sort key.
-    // We keep deadline sort but add a secondary sort on createdAt for ties.
-    const q = query(taskRef, orderBy("deadline", "asc"), orderBy("createdAt", "asc"));
+    
+    // FIX: Simplified query. Only order by 'createdAt' to avoid Firestore Index errors.
+    // If you need complex sorting, you must create an index in Firebase Console.
+    const q = query(taskRef, orderBy("createdAt", "asc"));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const taskData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setTasks(taskData);
@@ -34,12 +34,12 @@ function TaskManager({ roomId }) {
   }, [roomId]);
 
   const addTask = async () => {
-    if (!taskTitle || !deadline) return alert("Fill all fields");
+    if (!taskTitle) return alert("Please enter a task title");
     if (!roomId) return;
     try {
       await addDoc(collection(db, "rooms", roomId, "tasks"), {
         title: taskTitle,
-        deadline,
+        deadline: deadline || "No Date", // Ensure string is never null
         createdBy: user.uid,
         completed: false,
         createdAt: serverTimestamp(),
@@ -89,7 +89,7 @@ function TaskManager({ roomId }) {
             onClick={addTask}
             className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
-            Add Task
+            Add
           </button>
         </div>
       </div>
@@ -126,27 +126,14 @@ function TaskManager({ roomId }) {
                   {task.title}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Due</span>
                   <p className={`text-[11px] font-bold ${task.completed ? "text-slate-300" : "text-purple-500"}`}>
                     {task.deadline}
                   </p>
                 </div>
               </div>
             </div>
-
-            <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${
-              task.completed ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
-            }`}>
-              {task.completed ? "Done" : "Pending"}
-            </div>
           </div>
         ))}
-
-        {tasks.length === 0 && (
-          <div className="text-center py-12 rounded-[2rem] border-2 border-dashed border-slate-100">
-            <p className="text-slate-400 font-bold italic">No tasks active. Enjoy your free time!</p>
-          </div>
-        )}
       </div>
     </div>
   );

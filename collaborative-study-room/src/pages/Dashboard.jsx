@@ -14,12 +14,12 @@ import PomodoroTimer from "../components/Pomodoro";
 import StudyTracker from "../components/StudyTracker"; 
 import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
+import FlashcardDeck from "../components/FlashcardDeck"; // <--- 1. IMPORT THIS
+
 function Dashboard() {
   const { user } = useAuth(); 
   const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-
-  // 🔑 IMPORTANT: track focus / break
   const [isFlowActive, setIsFlowActive] = useState("focus");
 
   const navigate = useNavigate(); 
@@ -55,7 +55,6 @@ function Dashboard() {
   };
 
   return (
-    /* 🌈 DYNAMIC BACKGROUND (FOCUS ↔ BREAK) */
     <div
       className={`min-h-screen p-6 font-mono text-white transition-all duration-1000
         ${
@@ -108,17 +107,28 @@ function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-            {/* Tasks */}
-            <div className="lg:col-span-3">
+            {/* Main Column */}
+            <div className="lg:col-span-3 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Video Call */}
+                 <VideoRoom roomId={selectedRoomId} />
+                 
+                 {/* 2. ROOM FLASHCARDS (Shared) */}
+                 <FlashcardDeck 
+                    collectionPath={`rooms/${selectedRoomId}/flashcards`} 
+                    title="Room Flashcards" 
+                 />
+              </div>
+
+              {/* Tasks */}
               <TaskManager roomId={selectedRoomId} />
-              
             </div>
-          <VideoRoom roomId={selectedRoomId} />
+
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer
                 roomId={selectedRoomId}
-                onRunningChange={setIsFlowActive} // 🔑 CONNECTED
+                onRunningChange={setIsFlowActive} 
               />
 
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
@@ -130,12 +140,28 @@ function Dashboard() {
         </div>
       ) : (
         /* ===== MAIN DASHBOARD VIEW ===== */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          <div className="space-y-6">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-6">
             <StudyTracker />
 
-            <div className="glass-card p-6">
+            {/* 3. PRIVATE FLASHCARDS (Personal) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FlashcardDeck 
+                   collectionPath={`users/${user?.uid}/flashcards`} 
+                   title="My Private Deck" 
+                />
+                <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
+                    <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
+                    <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
+                </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="lg:col-span-1 space-y-6">
+             <div className="glass-card p-6">
               <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
                 ROOM CONTROLS
               </h2>
@@ -146,13 +172,13 @@ function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
-            <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
-              YOUR STUDY ROOM
-            </h2>
-            <RoomList onSelectRoom={setSelectedRoomId} />
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+              <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
+                YOUR STUDY ROOMS
+              </h2>
+              <RoomList onSelectRoom={setSelectedRoomId} />
+            </div>
           </div>
 
         </div>

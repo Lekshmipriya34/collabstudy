@@ -39,7 +39,7 @@ function JoinRoom() {
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
           placeholder="Paste Room Code here..."
-          className="border border-gray-300 p-2 rounded flex-grow focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+          className="border border-gray-300 p-2 rounded flex-grow focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm text-gray-700"
         />
         <button
           onClick={handleJoinRoom}

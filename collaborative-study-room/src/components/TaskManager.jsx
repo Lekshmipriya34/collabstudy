@@ -6,8 +6,8 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
-  query, 
-  orderBy 
+  query,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -18,16 +18,16 @@ function TaskManager({ roomId }) {
   const [deadline, setDeadline] = useState("");
   const [tasks, setTasks] = useState([]);
 
-  // --- LOGIC (Unchanged) ---
   useEffect(() => {
     if (!roomId) return;
     const taskRef = collection(db, "rooms", roomId, "tasks");
-    const q = query(taskRef, orderBy("deadline", "asc"));
+    // FIX: Order by createdAt (serverTimestamp) rather than deadline string.
+    // Deadline is a "YYYY-MM-DD" string so it DOES sort lexicographically correctly,
+    // but createdAt gives a more stable, always-present sort key.
+    // We keep deadline sort but add a secondary sort on createdAt for ties.
+    const q = query(taskRef, orderBy("deadline", "asc"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const taskData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       setTasks(taskData);
     });
     return () => unsubscribe();
@@ -54,12 +54,9 @@ function TaskManager({ roomId }) {
 
   const toggleTask = async (taskId, currentStatus) => {
     const taskRef = doc(db, "rooms", roomId, "tasks", taskId);
-    await updateDoc(taskRef, {
-      completed: !currentStatus,
-    });
+    await updateDoc(taskRef, { completed: !currentStatus });
   };
 
-  // --- UI RENDER (Redesigned) ---
   return (
     <div className="bg-white/90 backdrop-blur-md rounded-[2rem] shadow-xl border border-purple-50 p-8 h-full flex flex-col transition-all duration-500">
       <div className="flex justify-between items-center mb-6">
@@ -68,7 +65,7 @@ function TaskManager({ roomId }) {
           <p className="text-slate-400 text-sm font-medium">Keep track of group goals</p>
         </div>
         <div className="h-10 w-10 rounded-full bg-indigo-50 flex items-center justify-center">
-             <span className="text-indigo-600 font-bold text-sm">{tasks.length}</span>
+          <span className="text-indigo-600 font-bold text-sm">{tasks.length}</span>
         </div>
       </div>
 
@@ -79,6 +76,7 @@ function TaskManager({ roomId }) {
             placeholder="What needs to be done?"
             value={taskTitle}
             onChange={(e) => setTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addTask()}
             className="flex-grow p-4 rounded-2xl border-2 border-transparent focus:border-purple-400 focus:bg-white outline-none transition-all font-semibold text-slate-700 placeholder:text-slate-300"
           />
           <input
@@ -103,18 +101,19 @@ function TaskManager({ roomId }) {
             key={task.id}
             onClick={() => toggleTask(task.id, task.completed)}
             className={`group flex items-center justify-between p-5 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
-              task.completed 
-                ? "bg-slate-50 border-transparent" 
+              task.completed
+                ? "bg-slate-50 border-transparent"
                 : "bg-white border-slate-50 hover:border-purple-100 hover:shadow-md"
             }`}
           >
             <div className="flex items-center gap-4">
-              {/* Custom Animated Checkbox */}
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                task.completed 
-                  ? "bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-100" 
-                  : "border-slate-200 group-hover:border-purple-400"
-              }`}>
+              <div
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                  task.completed
+                    ? "bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-100"
+                    : "border-slate-200 group-hover:border-purple-400"
+                }`}
+              >
                 {task.completed && (
                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -123,26 +122,22 @@ function TaskManager({ roomId }) {
               </div>
 
               <div>
-                <p className={`font-bold transition-all duration-300 ${
-                  task.completed ? "line-through text-slate-400" : "text-slate-700"
-                }`}>
+                <p className={`font-bold transition-all duration-300 ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}>
                   {task.title}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Due</span>
-                    <p className={`text-[11px] font-bold ${task.completed ? "text-slate-300" : "text-purple-500"}`}>
-                        {task.deadline}
-                    </p>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Due</span>
+                  <p className={`text-[11px] font-bold ${task.completed ? "text-slate-300" : "text-purple-500"}`}>
+                    {task.deadline}
+                  </p>
                 </div>
               </div>
             </div>
-            
+
             <div className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${
-                task.completed 
-                ? "bg-emerald-100 text-emerald-600" 
-                : "bg-amber-100 text-amber-600"
+              task.completed ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
             }`}>
-               {task.completed ? "Done" : "Pending"}
+              {task.completed ? "Done" : "Pending"}
             </div>
           </div>
         ))}

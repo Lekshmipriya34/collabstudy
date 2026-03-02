@@ -13,7 +13,7 @@ import TaskManager from "../components/TaskManager";
 import PomodoroTimer from "../components/Pomodoro"; 
 import StudyTracker from "../components/StudyTracker"; 
 import RoomSidebar from "../components/RoomSidebar";
-
+import VideoRoom from "../components/VideoRoom";
 function Dashboard() {
   const { user } = useAuth(); 
   const [displayName, setDisplayName] = useState("SCHOLAR");
@@ -111,8 +111,9 @@ function Dashboard() {
             {/* Tasks */}
             <div className="lg:col-span-3">
               <TaskManager roomId={selectedRoomId} />
+              
             </div>
-
+          <VideoRoom roomId={selectedRoomId} />
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer

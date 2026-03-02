@@ -14,8 +14,9 @@ import PomodoroTimer from "../components/Pomodoro";
 import StudyTracker from "../components/StudyTracker"; 
 import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
-// UPDATED IMPORT: Use the Manager instead of the Deck directly
-import FlashcardManager from "../components/FlashcardManager"; 
+import FlashcardManager from "../components/FlashcardManager";
+// 1. IMPORT THE COLLABORATIVE EDITOR
+import CollaborativeEditor from "../components/CollaborativeEditor"; 
 
 function Dashboard() {
   const { user } = useAuth(); 
@@ -110,19 +111,25 @@ function Dashboard() {
 
             {/* Main Column */}
             <div className="lg:col-span-3 space-y-6">
+              
+              {/* Row 1: Video + Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  {/* Video Call */}
                  <VideoRoom roomId={selectedRoomId} />
                  
-                 {/* 2. ROOM FLASHCARDS (With Folders) */}
-                 {/* The Manager handles the /decks sub-collection automatically */}
+                 {/* Room Flashcards */}
                  <FlashcardManager 
                     basePath={`rooms/${selectedRoomId}`} 
                     title="Room Decks" 
                  />
               </div>
 
-              {/* Tasks */}
+              {/* Row 2: Shared Notes (NEW) */}
+              <CollaborativeEditor 
+                roomId={selectedRoomId} 
+              />
+
+              {/* Row 3: Tasks */}
               <TaskManager roomId={selectedRoomId} />
             </div>
 
@@ -148,7 +155,7 @@ function Dashboard() {
           <div className="lg:col-span-2 space-y-6">
             <StudyTracker />
 
-            {/* 3. PRIVATE FLASHCARDS (With Folders) */}
+            {/* Private Flashcards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FlashcardManager 
                    basePath={`users/${user?.uid}`} 

@@ -14,7 +14,8 @@ import PomodoroTimer from "../components/Pomodoro";
 import StudyTracker from "../components/StudyTracker"; 
 import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
-import FlashcardDeck from "../components/FlashcardDeck"; // <--- 1. IMPORT THIS
+// UPDATED IMPORT: Use the Manager instead of the Deck directly
+import FlashcardManager from "../components/FlashcardManager"; 
 
 function Dashboard() {
   const { user } = useAuth(); 
@@ -113,10 +114,11 @@ function Dashboard() {
                  {/* Video Call */}
                  <VideoRoom roomId={selectedRoomId} />
                  
-                 {/* 2. ROOM FLASHCARDS (Shared) */}
-                 <FlashcardDeck 
-                    collectionPath={`rooms/${selectedRoomId}/flashcards`} 
-                    title="Room Flashcards" 
+                 {/* 2. ROOM FLASHCARDS (With Folders) */}
+                 {/* The Manager handles the /decks sub-collection automatically */}
+                 <FlashcardManager 
+                    basePath={`rooms/${selectedRoomId}`} 
+                    title="Room Decks" 
                  />
               </div>
 
@@ -146,12 +148,13 @@ function Dashboard() {
           <div className="lg:col-span-2 space-y-6">
             <StudyTracker />
 
-            {/* 3. PRIVATE FLASHCARDS (Personal) */}
+            {/* 3. PRIVATE FLASHCARDS (With Folders) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FlashcardDeck 
-                   collectionPath={`users/${user?.uid}/flashcards`} 
-                   title="My Private Deck" 
+                <FlashcardManager 
+                   basePath={`users/${user?.uid}`} 
+                   title="My Private Decks" 
                 />
+                
                 <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
                     <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
                     <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>

@@ -19,8 +19,6 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setRoom(data);
-        // In a real app, you'd fetch user profiles here. 
-        // For now, we just map UIDs to dummy avatars if specific names aren't stored
         setMembersData(data.members || []);
       } else {
         // Room was deleted while we were looking at it
@@ -31,10 +29,32 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
     return () => unsubscribe();
   }, [roomId, onLeave]);
 
-  const handleCopy = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // UPDATED: Bulletproof Copy Function
+  const handleCopy = async (code) => {
+    if (!code) return;
+    const textToCopy = String(code).trim();
+
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for local testing / non-HTTPS environments
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "absolute";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      alert("Clipboard copy failed. Please select and copy the text manually.");
+    }
   };
 
   const handleExitRoom = async () => {
@@ -59,8 +79,6 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
         if (newMembers.length === 0) {
           // 2. CASE: Room is now empty -> DELETE IT
           transaction.delete(roomRef);
-          // Optional: Delete subcollections (notes, messages) manually if needed, 
-          // but for this MVP, deleting the parent is often sufficient for access control.
           console.log("Room deleted as last member left.");
         } else {
           // 3. CASE: Others remain -> UPDATE MEMBERS
@@ -68,8 +86,6 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
             members: newMembers
           });
           
-          // If the owner left, you might want to assign a new owner here.
-          // For now, we leave createdBy as is (historical) or update it:
           if (roomData.createdBy === user.uid) {
              transaction.update(roomRef, { createdBy: newMembers[0] });
           }
@@ -88,6 +104,9 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
   };
 
   if (!room) return <div className="text-white/50 text-sm">Loading room details...</div>;
+
+  // FIX: Unify the code so the UI and Clipboard use the exact same string
+  const displayCode = room.code || roomId;
 
   return (
     <div className="flex flex-col h-full">
@@ -111,13 +130,15 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
         </p>
 
         <div 
-          onClick={() => handleCopy(room.code || roomId)}
+          onClick={() => handleCopy(displayCode)}
           className="bg-black/20 hover:bg-black/30 cursor-pointer rounded-xl p-3 text-center border border-white/10 transition group"
+          title="Click to copy!"
         >
-          <span className="font-mono text-xl font-black tracking-[0.2em] text-emerald-300 shadow-black drop-shadow-sm">
-            {room.code || "NO-CODE"}
+          {/* Automatically shrinks long IDs if it's an old room, otherwise shows 6-digit code */}
+          <span className={`font-mono font-black tracking-[0.2em] text-emerald-300 shadow-black drop-shadow-sm ${displayCode.length > 6 ? 'text-xs break-all' : 'text-xl'}`}>
+            {displayCode}
           </span>
-          <div className="text-[10px] text-white/50 mt-1 group-hover:text-white/80 transition">
+          <div className="text-[10px] text-white/50 mt-1 group-hover:text-white/80 transition font-sans tracking-normal">
              {copied ? "✅ COPIED!" : "CLICK TO COPY"}
           </div>
         </div>
@@ -132,14 +153,12 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
           {membersData.map((memberId, index) => (
             <div key={memberId} className="flex items-center gap-3 bg-white/5 p-2 rounded-lg border border-white/5">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-400 to-pink-400 flex items-center justify-center text-xs font-bold shadow-md">
-                {/* Fallback avatar since we don't have all names fetched */}
                 {index + 1}
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-bold truncate">
                   {memberId === user.uid ? "You" : `Member ${index + 1}`}
                 </p>
-                {/* Show 'Host' badge if this user created the room */}
                 {memberId === room.createdBy && (
                   <span className="text-[9px] bg-yellow-500/20 text-yellow-200 px-1.5 py-0.5 rounded border border-yellow-500/30">
                     HOST

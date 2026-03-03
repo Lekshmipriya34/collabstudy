@@ -15,8 +15,11 @@ import StudyTracker from "../components/StudyTracker";
 import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
 import FlashcardManager from "../components/FlashcardManager";
-// 1. IMPORT THE COLLABORATIVE EDITOR
 import CollaborativeEditor from "../components/CollaborativeEditor"; 
+
+// 1. IMPORT THE NEW RESOURCE COMPONENTS
+import RoomResources from "../components/RoomResources";
+import UniversalLibrary from "../components/UniversalLibrary";
 
 function Dashboard() {
   const { user } = useAuth(); 
@@ -114,23 +117,24 @@ function Dashboard() {
               
               {/* Row 1: Video + Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Video Call */}
                  <VideoRoom roomId={selectedRoomId} />
                  
-                 {/* Room Flashcards */}
                  <FlashcardManager 
                     basePath={`rooms/${selectedRoomId}`} 
                     title="Room Decks" 
                  />
               </div>
 
-              {/* Row 2: Shared Notes (NEW) */}
+              {/* Row 2: Shared Notes */}
               <CollaborativeEditor 
                 roomId={selectedRoomId} 
               />
 
-              {/* Row 3: Tasks */}
-              <TaskManager roomId={selectedRoomId} />
+              {/* Row 3: Tasks + Room Resources (NEW) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <TaskManager roomId={selectedRoomId} />
+                <RoomResources roomId={selectedRoomId} />
+              </div>
             </div>
 
             
@@ -142,7 +146,6 @@ function Dashboard() {
               />
 
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
-                {/* UPDATED: Added onLeave prop */}
                 <RoomSidebar 
                   roomId={selectedRoomId} 
                   isRunning={true} 
@@ -173,6 +176,9 @@ function Dashboard() {
                     <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
                 </div>
             </div>
+
+            {/* Universal Library (NEW) */}
+            <UniversalLibrary />
           </div>
 
           {/* Right Column */}

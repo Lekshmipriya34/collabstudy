@@ -27,58 +27,59 @@ function RoomList({ onSelectRoom }) {
     return () => unsubscribe();
   }, [user]);
 
-  const handleCopy = (id) => {
-    navigator.clipboard.writeText(id);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000); // Reset "Copied" message after 2s
+  const handleCopy = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopiedId(code);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-3 text-gray-800">Your Study Rooms</h2>
+      <h2 className="text-xl font-semibold mb-3 text-white">Your Study Rooms</h2>
 
-      {rooms.length === 0 && <p className="text-gray-500 italic">No rooms joined yet.</p>}
+      {rooms.length === 0 && <p className="text-purple-200 italic">No rooms joined yet.</p>}
 
-      {rooms.map((room) => (
-        <div
-          key={room.id}
-          className="border border-gray-200 p-5 rounded-lg mb-4 bg-white shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition"
-        >
-          {/* Room Info */}
-          <div>
-            <h3 className="font-bold text-lg text-indigo-900">{room.name}</h3>
-            
-            {/* The "Share Code" Section */}
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Share Code:
-              </span>
-              <div 
-                className="bg-gray-100 border border-gray-300 px-2 py-1 rounded text-sm font-mono text-purple-700 font-bold tracking-wider cursor-pointer hover:bg-white select-all"
-                title="Click to select"
-              >
-                {room.id}
-              </div>
-              
-              {/* Copy Button */}
-              <button 
-                onClick={() => handleCopy(room.id)}
-                className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded transition"
-              >
-                {copiedId === room.id ? "✅ Copied!" : "📋 Copy"}
-              </button>
-            </div>
-          </div>
-          
-          {/* Action Button */}
-          <button
-            onClick={() => onSelectRoom(room.id)}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-md font-medium hover:bg-indigo-700 transition shadow-sm whitespace-nowrap"
+      {rooms.map((room) => {
+        // Use the short code if available, otherwise fallback to the long ID
+        const displayCode = room.code || room.id;
+
+        return (
+          <div
+            key={room.id}
+            className="border border-white/20 p-5 rounded-lg mb-4 bg-white/10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/20 transition"
           >
-            Enter Room →
-          </button>
-        </div>
-      ))}
+            <div>
+              <h3 className="font-bold text-lg text-white">{room.name}</h3>
+              
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs font-semibold text-purple-200 uppercase tracking-wide">
+                  Share Code:
+                </span>
+                <div 
+                  className="bg-black/30 border border-white/10 px-2 py-1 rounded text-sm font-mono text-emerald-300 font-bold tracking-wider cursor-pointer select-all"
+                  title="Click to select"
+                >
+                  {displayCode}
+                </div>
+                
+                <button 
+                  onClick={() => handleCopy(displayCode)}
+                  className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded transition"
+                >
+                  {copiedId === displayCode ? "✅ Copied!" : "📋 Copy"}
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => onSelectRoom(room.id)}
+              className="bg-white text-purple-900 px-5 py-2 rounded-md font-bold hover:bg-purple-100 transition shadow-sm whitespace-nowrap"
+            >
+              Enter Room →
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

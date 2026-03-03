@@ -72,19 +72,17 @@ function RoomSidebar({ roomId, isRunning }) {
           INVITE FRIENDS
         </p>
 
-        {/* FIX: Use the real roomId as the invite code (it IS the Firestore doc ID) */}
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl p-4 text-center font-mono text-sm tracking-wider shadow-inner break-all">
-          {roomId}
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-4 text-center font-mono text-2xl font-black tracking-[0.2em] shadow-inner text-white">
+          {room?.code || roomId}
         </div>
 
         <button
-          onClick={handleCopy}
+          onClick={() => handleCopy(room?.code || roomId)}
           className="mt-4 w-full bg-white text-purple-700 font-bold py-2 rounded-full hover:bg-purple-100 transition"
         >
           {copied ? "✅ COPIED!" : "COPY CODE"}
         </button>
       </div>
-
       {/* ONLINE MEMBERS */}
       <div>
         <p className="text-sm tracking-widest text-purple-200 mb-3">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 
@@ -13,10 +13,28 @@ function JoinRoom() {
     setLoading(true);
 
     try {
-      const roomRef = doc(db, "rooms", roomId);
+      const cleanCode = roomId.trim();
+      
+      // 1. Search for the short code in the database
+      const q = query(collection(db, "rooms"), where("code", "==", cleanCode.toUpperCase()));
+      const snapshot = await getDocs(q);
+
+      let targetRoomId = null;
+
+      if (!snapshot.empty) {
+        // Found a room with this short code
+        targetRoomId = snapshot.docs[0].id;
+      } else {
+        // Fallback: Try to use the input as a long document ID (for older rooms)
+        targetRoomId = cleanCode;
+      }
+
+      // 2. Update the members array of the found room
+      const roomRef = doc(db, "rooms", targetRoomId);
       await updateDoc(roomRef, {
         members: arrayUnion(user.uid),
       });
+      
       alert("Successfully joined the room!");
       setRoomId("");
     } catch (error) {
@@ -28,23 +46,24 @@ function JoinRoom() {
   };
 
   return (
-    <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-      <h2 className="text-lg font-bold text-gray-800 mb-2">Have a Code?</h2>
-      <p className="text-xs text-gray-500 mb-3">
-        Enter the Room Code shared by your friend to join.
+    <div className="mb-6 bg-white/10 p-4 rounded-lg shadow-sm border border-white/20">
+      <h2 className="text-lg font-bold text-white mb-2">Have a Code?</h2>
+      <p className="text-xs text-purple-200 mb-3">
+        Enter the 6-character Room Code to join.
       </p>
       
       <div className="flex gap-2">
         <input
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
-          placeholder="Paste Room Code here..."
-          className="border border-gray-300 p-2 rounded flex-grow focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm text-gray-700"
+          placeholder="e.g. HX92KP"
+          className="border border-white/20 bg-white/10 text-white placeholder-purple-200 p-2 rounded flex-grow focus:outline-none focus:border-purple-300 font-mono text-sm uppercase"
+          maxLength={6}
         />
         <button
           onClick={handleJoinRoom}
           disabled={loading}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold transition whitespace-nowrap"
+          className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded font-semibold transition whitespace-nowrap"
         >
           {loading ? "Joining..." : "Join Room"}
         </button>

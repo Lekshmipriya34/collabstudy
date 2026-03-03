@@ -58,42 +58,26 @@ function VideoRoom({ roomId }) {
         setConnected(pc.connectionState === "connected");
       };
 
-      // 1. Get ONLY Audio initially (Cleaner start)
-      // We don't grab video yet to keep the light off and save battery
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: false, // Don't ask for video yet
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      // 1. Initialize an empty stream container
+      localStreamRef.current = new MediaStream();
 
-      // Mute audio initially per your request (Default Off)
-      stream.getAudioTracks().forEach((t) => (t.enabled = false));
-      
-      // Add Audio Track
-      stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
-
-      // 2. Add "Empty" Video Transceiver
-      // This tells the connection: "I might send video later, so prepare the channel"
+      // 2. Add "Empty" Transceivers (THIS KEEPS HARDWARE OFF INITIALLY)
+      // This tells the connection: "I might send media later, so prepare the channels"
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
       pc.addTransceiver('video', { direction: 'sendrecv' });
-
-      localStreamRef.current = stream;
       
       // Handle Remote Stream
       pc.ontrack = (event) => {
         if (remoteVideo.current && event.streams[0]) {
           remoteVideo.current.srcObject = event.streams[0];
         } else if (remoteVideo.current && event.track) {
-          // Fallback if stream isn't grouped
           const remoteStream = new MediaStream();
           remoteStream.addTrack(event.track);
           remoteVideo.current.srcObject = remoteStream;
         }
       };
 
-      // --- Signaling (Same as before) ---
+      // --- Signaling ---
       const roomRef = doc(db, "calls", roomId);
       const callerCandidatesCol = collection(db, "calls", roomId, "callerCandidates");
       const calleeCandidatesCol = collection(db, "calls", roomId, "calleeCandidates");
@@ -159,27 +143,23 @@ function VideoRoom({ roomId }) {
     // 1. Turning Camera ON
     if (!cameraOn) {
       try {
-        const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         const newVideoTrack = newStream.getVideoTracks()[0];
         
-        // Add track to local stream for self-view
         if (localStreamRef.current) {
              localStreamRef.current.addTrack(newVideoTrack);
-             // Update local video element
              if (localVideo.current) {
-                 localVideo.current.srcObject = null; // Clear to force refresh
+                 localVideo.current.srcObject = null; 
                  localVideo.current.srcObject = localStreamRef.current;
              }
         }
 
-        // Send to Peer
-        const sender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === "video") 
-                       || pcRef.current.getSenders().find((s) => s.dtmf); // Fallback finding the video sender
+        const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video") 
+                       || pcRef.current.getSenders().find((s) => s.receiver?.track?.kind === "video"); 
         
         if (sender) {
             await sender.replaceTrack(newVideoTrack);
         } else {
-            // Fallback: If no sender exists (rare with addTransceiver), add the track
             pcRef.current.addTrack(newVideoTrack, localStreamRef.current);
         }
         
@@ -189,28 +169,62 @@ function VideoRoom({ roomId }) {
           alert("Could not start camera. Make sure permissions are allowed.");
       }
     } 
-    // 2. Turning Camera OFF
+    // 2. Turning Camera OFF (Hard Stop)
     else {
       const videoTrack = localStreamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
-        videoTrack.stop(); // Turn off hardware light
+        videoTrack.stop(); // Kills the camera hardware light
         localStreamRef.current.removeTrack(videoTrack);
       }
       
-      const sender = pcRef.current.getSenders().find((s) => s.track && s.track.kind === "video");
-      if (sender) {
-          await sender.replaceTrack(null); // Send black/nothing
-      }
+      const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) await sender.replaceTrack(null); 
+      
       setCameraOn(false);
     }
   };
 
-  const toggleMic = () => {
-    if (!localStreamRef.current) return;
-    const audioTrack = localStreamRef.current.getAudioTracks()[0];
-    if (!audioTrack) return;
-    audioTrack.enabled = !audioTrack.enabled;
-    setMicOn(audioTrack.enabled);
+  const toggleMic = async () => {
+    // 1. Turning Mic OFF (Hard Stop)
+    if (micOn) {
+      const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.stop(); // Kills the browser's red recording dot!
+        localStreamRef.current.removeTrack(audioTrack);
+      }
+      
+      const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "audio");
+      if (sender) await sender.replaceTrack(null);
+      
+      setMicOn(false);
+    } 
+    // 2. Turning Mic ON
+    else {
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { echoCancellation: true, noiseSuppression: true } 
+        });
+        const newAudioTrack = newStream.getAudioTracks()[0];
+        
+        if (localStreamRef.current) {
+          localStreamRef.current.addTrack(newAudioTrack);
+        }
+
+        const sender = pcRef.current.getSenders().find((s) => s.track?.kind === "audio") 
+                       || pcRef.current.getSenders().find((s) => s.receiver?.track?.kind === "audio"); 
+        
+        if (sender) {
+          await sender.replaceTrack(newAudioTrack);
+        } else {
+          pcRef.current.addTrack(newAudioTrack, localStreamRef.current);
+        }
+        
+        setMicOn(true);
+      } catch (err) {
+        console.error("Error starting mic:", err);
+        alert("Could not access microphone.");
+      }
+    }
   };
 
   return (

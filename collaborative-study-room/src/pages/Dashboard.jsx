@@ -133,6 +133,7 @@ function Dashboard() {
               <TaskManager roomId={selectedRoomId} />
             </div>
 
+            
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer
@@ -141,7 +142,12 @@ function Dashboard() {
               />
 
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
-                <RoomSidebar roomId={selectedRoomId} isRunning={true} />
+                {/* UPDATED: Added onLeave prop */}
+                <RoomSidebar 
+                  roomId={selectedRoomId} 
+                  isRunning={true} 
+                  onLeave={() => setSelectedRoomId(null)}
+                />
               </div>
             </div>
 

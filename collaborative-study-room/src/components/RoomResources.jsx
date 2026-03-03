@@ -39,7 +39,9 @@ function RoomResources({ roomId }) {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!subject) return alert("Please enter a Subject/Topic (e.g., Physics)");
+    
+    // FIX: Added .trim() to ensure empty spaces don't pass, and it catches properly
+    if (!subject.trim()) return alert("Please enter a Subject/Topic (e.g., Physics)");
     
     setLoading(true);
     try {
@@ -57,7 +59,7 @@ function RoomResources({ roomId }) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", UPLOAD_PRESET);
-        formData.append("folder", `studyhive/${roomId}`);
+        formData.append("folder", `collaborative_study_room/${roomId}`);
 
         const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
           method: "POST",
@@ -68,20 +70,20 @@ function RoomResources({ roomId }) {
         const data = await res.json();
         
         finalUrl = data.secure_url;
-        finalName = name || file.name.replace(/\.[^.]+$/, ''); // Remove extension for display
+        finalName = name || file.name.replace(/\.[^.]+$/, ''); 
         finalType = file.type.includes("pdf") ? "pdf" : "image";
       } 
       
       // 2. LINK
       else if (activeTab === "link") {
-        if (!linkUrl) return alert("Enter a URL");
+        if (!linkUrl.trim()) return alert("Enter a URL");
         finalUrl = linkUrl;
         finalName = name || linkUrl;
       }
 
       // 3. YOUTUBE
       else if (activeTab === "youtube") {
-        if (!linkUrl) return alert("Enter YouTube URL");
+        if (!linkUrl.trim()) return alert("Enter YouTube URL");
         const yId = extractYoutubeId(linkUrl);
         if (!yId) return alert("Invalid YouTube URL");
         
@@ -92,7 +94,7 @@ function RoomResources({ roomId }) {
 
       // 4. NOTE
       else if (activeTab === "note") {
-        if (!noteContent) return alert("Write something!");
+        if (!noteContent.trim()) return alert("Write something!");
         finalName = name || noteContent.slice(0, 30) + "...";
       }
 
@@ -104,7 +106,7 @@ function RoomResources({ roomId }) {
         url: finalUrl,
         content: activeTab === "note" ? noteContent : null,
         thumbnail: finalThumbnail,
-        subject: subject.toUpperCase(),
+        subject: subject.toUpperCase().trim(),
         uploadedBy: { uid: user.uid, name: user.displayName || "Member" },
         createdAt: serverTimestamp(),
       });
@@ -168,51 +170,57 @@ function RoomResources({ roomId }) {
           </div>
 
           <form onSubmit={handleUpload} className="space-y-3">
+             {/* FIX: Added text-slate-900 to ensure text is black */}
              <input 
                 value={subject} onChange={(e) => setSubject(e.target.value)} 
                 placeholder="Topic / Subject (e.g. BIOLOGY)" 
-                className="w-full p-2 rounded-lg border border-slate-200 text-xs font-bold uppercase tracking-wide outline-none focus:border-indigo-400" 
+                className="w-full p-2 rounded-lg border border-slate-200 text-xs font-bold uppercase tracking-wide outline-none focus:border-indigo-400 text-slate-900 bg-white placeholder:text-slate-400" 
              />
 
              {activeTab === 'file' && (
                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:bg-slate-100 transition relative">
                  <input id="file-upload" type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.png,.jpg,.jpeg" />
                  <p className="text-slate-500 text-xs font-bold">{loading ? '⏳ Uploading...' : '📂 Click to upload PDF or Image'}</p>
+                 {/* FIX: Added text-slate-900 */}
                  <input 
                    value={name} onChange={(e) => setName(e.target.value)} 
                    placeholder="File Name (Optional)" 
-                   className="mt-4 w-full p-2 rounded border border-slate-200 text-sm z-10 relative" 
+                   className="mt-4 w-full p-2 rounded border border-slate-200 text-sm z-10 relative text-slate-900 bg-white placeholder:text-slate-400" 
                  />
                </div>
              )}
 
              {(activeTab === 'link' || activeTab === 'youtube') && (
                <>
+                 {/* FIX: Added text-slate-900 */}
                  <input 
                     value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} 
                     placeholder={activeTab === 'youtube' ? "Paste YouTube Link..." : "https://..."} 
-                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none" 
+                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none text-slate-900 bg-white placeholder:text-slate-400" 
                  />
+                 {/* FIX: Added text-slate-900 */}
                  <input 
                     value={name} onChange={(e) => setName(e.target.value)} 
                     placeholder="Title (Optional)" 
-                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none" 
+                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none text-slate-900 bg-white placeholder:text-slate-400" 
                  />
                </>
              )}
 
              {activeTab === 'note' && (
                <>
+                  {/* FIX: Added text-slate-900 */}
                   <input 
                     value={name} onChange={(e) => setName(e.target.value)} 
                     placeholder="Note Title" 
-                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none font-bold" 
+                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none font-bold text-slate-900 bg-white placeholder:text-slate-400" 
                  />
+                 {/* FIX: Added text-slate-900 */}
                  <textarea 
                     value={noteContent} onChange={(e) => setNoteContent(e.target.value)} 
                     placeholder="Type your note here..." 
                     rows={3}
-                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none resize-none" 
+                    className="w-full p-2 rounded-lg border border-slate-200 text-sm outline-none resize-none text-slate-900 bg-white placeholder:text-slate-400" 
                  />
                </>
              )}

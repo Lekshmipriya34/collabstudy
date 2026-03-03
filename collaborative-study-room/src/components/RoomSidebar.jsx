@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, runTransaction } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, deleteDoc } from "firebase/firestore"; // Added deleteDoc
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 
@@ -29,17 +29,15 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
     return () => unsubscribe();
   }, [roomId, onLeave]);
 
-  // UPDATED: Bulletproof Copy Function
+  // Bulletproof Copy Function
   const handleCopy = async (code) => {
     if (!code) return;
     const textToCopy = String(code).trim();
 
     try {
-      // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(textToCopy);
       } else {
-        // Fallback for local testing / non-HTTPS environments
         const textArea = document.createElement("textarea");
         textArea.value = textToCopy;
         textArea.style.position = "absolute";
@@ -58,7 +56,7 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
   };
 
   const handleExitRoom = async () => {
-    if (!confirm("Are you sure you want to leave this room?")) return;
+    if (!window.confirm("Are you sure you want to leave this room?")) return;
     setLoading(true);
 
     try {
@@ -103,10 +101,27 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
     }
   };
 
+  // NEW: Handle Permanent Deletion
+  const handleDeleteRoom = async () => {
+    if (!window.confirm("Are you sure you want to delete this room permanently?")) return;
+    setLoading(true);
+
+    try {
+      await deleteDoc(doc(db, "rooms", roomId));
+      console.log("Room permanently deleted by host.");
+      onLeave();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete room: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!room) return <div className="text-white/50 text-sm">Loading room details...</div>;
 
-  // FIX: Unify the code so the UI and Clipboard use the exact same string
   const displayCode = room.code || roomId;
+  const isHost = room.createdBy === user.uid;
 
   return (
     <div className="flex flex-col h-full">
@@ -134,7 +149,6 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
           className="bg-black/20 hover:bg-black/30 cursor-pointer rounded-xl p-3 text-center border border-white/10 transition group"
           title="Click to copy!"
         >
-          {/* Automatically shrinks long IDs if it's an old room, otherwise shows 6-digit code */}
           <span className={`font-mono font-black tracking-[0.2em] text-emerald-300 shadow-black drop-shadow-sm ${displayCode.length > 6 ? 'text-xs break-all' : 'text-xl'}`}>
             {displayCode}
           </span>
@@ -172,6 +186,18 @@ function RoomSidebar({ roomId, isRunning, onLeave }) {
 
       {/* FOOTER: DANGER ZONE */}
       <div className="pt-4 border-t border-white/10">
+        
+        {/* Only show DELETE button if the current user is the Host */}
+        {isHost && (
+          <button
+            onClick={handleDeleteRoom}
+            disabled={loading}
+            className="w-full mb-3 flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600 text-red-200 hover:text-white border border-red-500/30 px-4 py-3 rounded-xl transition-all duration-300 font-bold text-xs tracking-widest uppercase group"
+          >
+            {loading ? "Deleting..." : "Delete Room"}
+          </button>
+        )}
+
         <button
           onClick={handleExitRoom}
           disabled={loading}

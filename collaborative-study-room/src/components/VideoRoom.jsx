@@ -35,8 +35,8 @@ function VideoRoom({ roomId }) {
     await deleteDoc(roomRef);
     const callerCandidates = await getDocs(collection(db, "calls", roomId, "callerCandidates"));
     const calleeCandidates = await getDocs(collection(db, "calls", roomId, "calleeCandidates"));
-    callerCandidates.forEach((doc) => deleteDoc(doc.ref));
-    calleeCandidates.forEach((doc) => deleteDoc(doc.ref));
+    await Promise.all(callerCandidates.docs.map(d => deleteDoc(d.ref)));
+    await Promise.all(calleeCandidates.docs.map(d => deleteDoc(d.ref)));
     window.location.reload();
   };
 
@@ -58,22 +58,23 @@ function VideoRoom({ roomId }) {
         setConnected(pc.connectionState === "connected");
       };
 
-      // 1. Initialize an empty stream container
       localStreamRef.current = new MediaStream();
 
-      // 2. Add "Empty" Transceivers (THIS KEEPS HARDWARE OFF INITIALLY)
-      // This tells the connection: "I might send media later, so prepare the channels"
       pc.addTransceiver('audio', { direction: 'sendrecv' });
       pc.addTransceiver('video', { direction: 'sendrecv' });
       
-      // Handle Remote Stream
+      // FIX 2: Correctly merge arriving tracks without overwriting
       pc.ontrack = (event) => {
-        if (remoteVideo.current && event.streams[0]) {
+        if (event.streams && event.streams[0]) {
           remoteVideo.current.srcObject = event.streams[0];
-        } else if (remoteVideo.current && event.track) {
-          const remoteStream = new MediaStream();
-          remoteStream.addTrack(event.track);
-          remoteVideo.current.srcObject = remoteStream;
+        } else {
+          // If tracks arrive separately, add them to the existing stream
+          let stream = remoteVideo.current.srcObject;
+          if (!stream) {
+            stream = new MediaStream();
+            remoteVideo.current.srcObject = stream;
+          }
+          stream.addTrack(event.track);
         }
       };
 
@@ -84,12 +85,22 @@ function VideoRoom({ roomId }) {
 
       const roomSnapshot = await getDoc(roomRef);
       const existingData = roomSnapshot.exists() ? roomSnapshot.data() : null;
-      const hasLiveSession = existingData?.offer && existingData?.answer;
-      const isCaller = !roomSnapshot.exists() || !hasLiveSession;
 
-      if (isCaller) {
+      // FIX 1: Proper Caller vs Callee identification
+      let isCaller = false;
+      
+      if (!existingData || !existingData.offer) {
+        // No offer exists -> I am the first person here.
+        isCaller = true;
+      } else if (existingData.offer && !existingData.answer) {
+        // Offer exists, but no answer -> I am the second person. Answer the call!
+        isCaller = false;
+      } else {
+        // Both offer and answer exist. It's a stale/ghost room. Reset it.
         await clearCollection(callerCandidatesCol);
         await clearCollection(calleeCandidatesCol);
+        await setDoc(roomRef, {}); // Clear the old data
+        isCaller = true; // Act as the new caller
       }
 
       const myCandidates = isCaller ? callerCandidatesCol : calleeCandidatesCol;
@@ -106,6 +117,8 @@ function VideoRoom({ roomId }) {
           const data = snapshot.data();
           if (!pc.currentRemoteDescription && data?.answer) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+            
+            // Listen for Callee's ICE candidates
             unsubscribeCandidates = onSnapshot(calleeCandidatesCol, (snap) => {
               snap.docChanges().forEach((change) => {
                 if (change.type === "added")
@@ -115,11 +128,13 @@ function VideoRoom({ roomId }) {
           }
         });
       } else {
+        // I am the Callee. Let's answer the offer!
         await pc.setRemoteDescription(new RTCSessionDescription(existingData.offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         await updateDoc(roomRef, { answer: { type: answer.type, sdp: answer.sdp } });
 
+        // Listen for Caller's ICE candidates
         unsubscribeCandidates = onSnapshot(callerCandidatesCol, (snap) => {
           snap.docChanges().forEach((change) => {
             if (change.type === "added")
@@ -140,7 +155,6 @@ function VideoRoom({ roomId }) {
   }, [roomId]);
 
   const toggleCamera = async () => {
-    // 1. Turning Camera ON
     if (!cameraOn) {
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -168,12 +182,10 @@ function VideoRoom({ roomId }) {
           console.error("Error starting video:", err); 
           alert("Could not start camera. Make sure permissions are allowed.");
       }
-    } 
-    // 2. Turning Camera OFF (Hard Stop)
-    else {
+    } else {
       const videoTrack = localStreamRef.current?.getVideoTracks()[0];
       if (videoTrack) {
-        videoTrack.stop(); // Kills the camera hardware light
+        videoTrack.stop(); 
         localStreamRef.current.removeTrack(videoTrack);
       }
       
@@ -185,11 +197,10 @@ function VideoRoom({ roomId }) {
   };
 
   const toggleMic = async () => {
-    // 1. Turning Mic OFF (Hard Stop)
     if (micOn) {
       const audioTrack = localStreamRef.current?.getAudioTracks()[0];
       if (audioTrack) {
-        audioTrack.stop(); // Kills the browser's red recording dot!
+        audioTrack.stop(); 
         localStreamRef.current.removeTrack(audioTrack);
       }
       
@@ -197,9 +208,7 @@ function VideoRoom({ roomId }) {
       if (sender) await sender.replaceTrack(null);
       
       setMicOn(false);
-    } 
-    // 2. Turning Mic ON
-    else {
+    } else {
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({ 
           audio: { echoCancellation: true, noiseSuppression: true } 
@@ -229,7 +238,6 @@ function VideoRoom({ roomId }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-md overflow-hidden relative">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
         <h2 className="text-base font-bold text-slate-800">Live Study Room</h2>
         <div className="flex gap-2">
@@ -246,9 +254,7 @@ function VideoRoom({ roomId }) {
         </div>
       </div>
 
-      {/* Videos */}
       <div className="flex gap-3 p-4 flex-wrap justify-center bg-slate-900">
-        {/* Local Video */}
         <div className="relative rounded-xl overflow-hidden group">
           <video 
             ref={localVideo} 
@@ -265,7 +271,6 @@ function VideoRoom({ roomId }) {
           <span className="absolute bottom-2 left-2 text-white text-xs bg-black/50 px-2 py-0.5 rounded-full">You {micOn ? "" : "(Muted)"}</span>
         </div>
 
-        {/* Remote Video */}
         <div className="relative rounded-xl overflow-hidden">
           <video 
             ref={remoteVideo} 
@@ -277,7 +282,6 @@ function VideoRoom({ roomId }) {
         </div>
       </div>
 
-      {/* Controls */}
       <div className="flex items-center justify-center gap-3 px-5 py-4 bg-slate-800 border-t border-slate-700">
         <button onClick={toggleMic} className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${micOn ? "bg-slate-600 text-white" : "bg-red-500 text-white"}`}>
           {micOn ? "Mute" : "Unmute"}

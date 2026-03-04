@@ -26,8 +26,9 @@ function Dashboard() {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [isFlowActive, setIsFlowActive] = useState("focus");
   
-  // NEW: State to hold the current room's name
   const [currentRoomName, setCurrentRoomName] = useState("");
+  // NEW: State to hold the short room code
+  const [currentRoomCode, setCurrentRoomCode] = useState("");
 
   const navigate = useNavigate(); 
 
@@ -53,24 +54,28 @@ function Dashboard() {
     fetchUserData();
   }, [user]);
 
-  // NEW: Fetch Room Name whenever a room is selected
+  // UPDATED: Fetch Room Name AND Short Code whenever a room is selected
   useEffect(() => {
-    const fetchRoomName = async () => {
+    const fetchRoomDetails = async () => {
       if (!selectedRoomId) {
         setCurrentRoomName("");
+        setCurrentRoomCode("");
         return;
       }
       try {
         const roomDoc = await getDoc(doc(db, "rooms", selectedRoomId));
         if (roomDoc.exists()) {
-          setCurrentRoomName(roomDoc.data().name || "STUDY ROOM");
+          const data = roomDoc.data();
+          setCurrentRoomName(data.name || "STUDY ROOM");
+          // Grab the short code field (fallback to ID if missing for older rooms)
+          setCurrentRoomCode(data.code || data.roomCode || selectedRoomId); 
         }
       } catch (error) {
         console.error("Error fetching room details:", error);
       }
     };
 
-    fetchRoomName();
+    fetchRoomDetails();
   }, [selectedRoomId]);
 
   const handleLogout = async () => {
@@ -99,20 +104,20 @@ function Dashboard() {
         {/* DYNAMIC HEADER TEXT */}
         <div>
           {selectedRoomId ? (
-            <>
+            <div className="flex flex-col">
               <h1 className="text-4xl font-bold tracking-widest drop-shadow-md flex items-center gap-3">
                 <span className="bg-white/20 px-3 py-1 rounded-xl text-2xl border border-white/30">🎧</span>
                 {currentRoomName.toUpperCase()}
               </h1>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+              <div className="flex items-center mt-2">
+                <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2 pr-3">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
                 </span>
-                <span className="text-purple-200/70 text-xs border-l border-white/20 pl-3">
-                  ROOM CODE: <span className="font-mono text-white font-bold tracking-wider select-all">{selectedRoomId}</span>
+                <span className="text-purple-200 text-xs font-bold border-l border-white/20 pl-3">
+                  ROOM CODE: <span className="font-mono text-white tracking-wider select-all ml-1 bg-white/10 px-2 py-0.5 rounded">{currentRoomCode}</span>
                 </span>
               </div>
-            </>
+            </div>
           ) : (
             <>
               <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">

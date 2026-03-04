@@ -17,7 +17,6 @@ import VideoRoom from "../components/VideoRoom";
 import FlashcardManager from "../components/FlashcardManager";
 import CollaborativeEditor from "../components/CollaborativeEditor"; 
 
-// 1. IMPORT THE NEW RESOURCE COMPONENTS
 import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
 
@@ -26,9 +25,13 @@ function Dashboard() {
   const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [isFlowActive, setIsFlowActive] = useState("focus");
+  
+  // NEW: State to hold the current room's name
+  const [currentRoomName, setCurrentRoomName] = useState("");
 
   const navigate = useNavigate(); 
 
+  // Fetch User Data
   useEffect(() => {
     const fetchUserData = async () => {
       if (user?.uid) {
@@ -49,6 +52,26 @@ function Dashboard() {
 
     fetchUserData();
   }, [user]);
+
+  // NEW: Fetch Room Name whenever a room is selected
+  useEffect(() => {
+    const fetchRoomName = async () => {
+      if (!selectedRoomId) {
+        setCurrentRoomName("");
+        return;
+      }
+      try {
+        const roomDoc = await getDoc(doc(db, "rooms", selectedRoomId));
+        if (roomDoc.exists()) {
+          setCurrentRoomName(roomDoc.data().name || "STUDY ROOM");
+        }
+      } catch (error) {
+        console.error("Error fetching room details:", error);
+      }
+    };
+
+    fetchRoomName();
+  }, [selectedRoomId]);
 
   const handleLogout = async () => {
     try {
@@ -72,28 +95,49 @@ function Dashboard() {
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        
+        {/* DYNAMIC HEADER TEXT */}
         <div>
-          <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
-            HI, {displayName} 👋
-          </h1>
-          <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
-            Welcome back to your workspace.
-          </p>
+          {selectedRoomId ? (
+            <>
+              <h1 className="text-4xl font-bold tracking-widest drop-shadow-md flex items-center gap-3">
+                <span className="bg-white/20 px-3 py-1 rounded-xl text-2xl border border-white/30">🎧</span>
+                {currentRoomName.toUpperCase()}
+              </h1>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
+                </span>
+                <span className="text-purple-200/70 text-xs border-l border-white/20 pl-3">
+                  ROOM CODE: <span className="font-mono text-white font-bold tracking-wider select-all">{selectedRoomId}</span>
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
+                HI, {displayName} 👋
+              </h1>
+              <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
+                Welcome back to your workspace.
+              </p>
+            </>
+          )}
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mt-4 md:mt-0">
           {selectedRoomId && (
             <button 
               onClick={() => setSelectedRoomId(null)}
-              className="text-sm text-purple-200 underline hover:text-white transition tracking-wide"
+              className="text-sm font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-xl shadow-lg hover:bg-white/20 transition-all tracking-wide"
             >
-              ← BACK TO ROOM LIST
+              ← LEAVE ROOM
             </button>
           )}
 
           <button 
             onClick={handleLogout}
-            className="bg-[#1a1a1a] border-2 border-[#f0abfc] text-white px-6 py-2 rounded-full shadow-lg hover:bg-[#d8a4e2] hover:text-black hover:border-[#d8a4e2] transition-all duration-300 font-bold tracking-wider text-sm"
+            className="bg-[#1a1a1a] border-2 border-[#f0abfc] text-white px-6 py-2 rounded-xl shadow-lg hover:bg-[#d8a4e2] hover:text-black hover:border-[#d8a4e2] transition-all duration-300 font-bold tracking-wider text-sm"
           >
             LOGOUT
           </button>
@@ -130,7 +174,7 @@ function Dashboard() {
                 roomId={selectedRoomId} 
               />
 
-              {/* Row 3: Tasks + Room Resources (NEW) */}
+              {/* Row 3: Tasks + Room Resources */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TaskManager roomId={selectedRoomId} />
                 <RoomResources roomId={selectedRoomId} />
@@ -177,7 +221,7 @@ function Dashboard() {
                 </div>
             </div>
 
-            {/* Universal Library (NEW) */}
+            {/* Universal Library */}
             <UniversalLibrary />
           </div>
 

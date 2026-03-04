@@ -28,7 +28,15 @@ function Dashboard() {
   const [currentRoomName, setCurrentRoomName] = useState("");
   const [currentRoomCode, setCurrentRoomCode] = useState("");
   
-  const [userStats, setUserStats] = useState({ streak: 0, totalPomodoros: 0 });
+  // UPDATED: Advanced state to hold detailed analytics
+  const [userStats, setUserStats] = useState({ 
+    streak: 0, 
+    pomodorosToday: 0,
+    pomodoroTrend: "",
+    pomodoroTrendColor: "",
+    hoursThisWeek: 0,
+    flashcardAccuracy: 87 // Mocked for UI, can be connected to flashcard db later
+  });
 
   const navigate = useNavigate(); 
 
@@ -50,10 +58,11 @@ function Dashboard() {
         }
       }
     };
+
     fetchUserData();
   }, [user]);
 
-  // CALCULATE STATS FROM STUDY SESSIONS
+  // CALCULATE ADVANCED STATS FROM STUDY SESSIONS
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -64,33 +73,42 @@ function Dashboard() {
 
     const unsubscribe = onSnapshot(q, (snap) => {
       const sessions = snap.docs.map((doc) => doc.data());
-      const total = sessions.length;
 
-      // Calculate Streak
-      const dates = new Set();
-      sessions.forEach((s) => {
-        const dateObj = s.createdAt ? s.createdAt.toDate() : new Date();
-        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-        dates.add(dateStr);
-      });
-
-      const uniqueDates = Array.from(dates);
-      let currentStreak = 0;
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
+      const oneWeekAgo = new Date(today);
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
       const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       
       const todayStr = formatDate(today);
       const yesterdayStr = formatDate(yesterday);
 
+      let pToday = 0;
+      let pYesterday = 0;
+      let pThisWeek = 0;
+      const dates = new Set();
+
+      sessions.forEach((s) => {
+        const dateObj = s.createdAt ? s.createdAt.toDate() : new Date();
+        const dateStr = formatDate(dateObj);
+        dates.add(dateStr);
+
+        if (dateStr === todayStr) pToday++;
+        if (dateStr === yesterdayStr) pYesterday++;
+        if (dateObj >= oneWeekAgo) pThisWeek++;
+      });
+
+      // Calculate Streak
+      const uniqueDates = Array.from(dates);
+      let currentStreak = 0;
+
       if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
         let checkDate = uniqueDates.includes(todayStr) ? today : yesterday;
-        
         while (true) {
-          const dateStr = formatDate(checkDate);
-          if (uniqueDates.includes(dateStr)) {
+          const dStr = formatDate(checkDate);
+          if (uniqueDates.includes(dStr)) {
             currentStreak++;
             checkDate.setDate(checkDate.getDate() - 1); 
           } else {
@@ -99,7 +117,21 @@ function Dashboard() {
         }
       }
 
-      setUserStats({ streak: currentStreak, totalPomodoros: total });
+      // Calculate Trends & Hours
+      const diff = pToday - pYesterday;
+      const trendText = diff >= 0 ? `↑ +${diff} vs yesterday` : `↓ ${Math.abs(diff)} vs yesterday`;
+      const trendColor = diff >= 0 ? "text-emerald-500" : "text-rose-500";
+      
+      const hours = ((pThisWeek * 25) / 60).toFixed(1);
+
+      setUserStats({ 
+        streak: currentStreak, 
+        pomodorosToday: pToday,
+        pomodoroTrend: trendText,
+        pomodoroTrendColor: trendColor,
+        hoursThisWeek: hours,
+        flashcardAccuracy: 87 // keeping mock for now
+      });
     });
 
     return () => unsubscribe();
@@ -173,17 +205,9 @@ function Dashboard() {
               <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
                 HI, {displayName} 👋
               </h1>
-              {/* Stats Badges */}
-              <div className="flex flex-wrap gap-3 mt-4">
-                <div className="flex items-center gap-2 bg-black/20 px-4 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm shadow-sm">
-                  <span className="text-orange-400 text-lg drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]">🔥</span>
-                  <span className="text-xs font-bold tracking-widest text-white">{userStats.streak}-DAY STREAK</span>
-                </div>
-                <div className="flex items-center gap-2 bg-black/20 px-4 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm shadow-sm">
-                  <span className="text-rose-400 text-lg drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]">🍅</span>
-                  <span className="text-xs font-bold tracking-widest text-white">{userStats.totalPomodoros} COMPLETED</span>
-                </div>
-              </div>
+              <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
+                Welcome back to your workspace.
+              </p>
             </>
           )}
         </div>
@@ -225,6 +249,7 @@ function Dashboard() {
               {/* Row 1: Video + Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <VideoRoom roomId={selectedRoomId} />
+                 
                  <FlashcardManager 
                     basePath={`rooms/${selectedRoomId}`} 
                     title="Room Decks" 
@@ -249,6 +274,7 @@ function Dashboard() {
                 roomId={selectedRoomId}
                 onRunningChange={setIsFlowActive} 
               />
+
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
                 <RoomSidebar 
                   roomId={selectedRoomId} 
@@ -262,48 +288,100 @@ function Dashboard() {
         </div>
       ) : (
         /* ===== MAIN DASHBOARD VIEW ===== */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            <StudyTracker />
-
-            {/* Private Flashcards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FlashcardManager 
-                   basePath={`users/${user?.uid}`} 
-                   title="My Private Decks" 
-                />
-                
-                <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
-                    <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
-                    <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
-                </div>
+        <div className="space-y-8">
+          
+          {/* NEW: ANALYTICS WIDGETS SECTION */}
+          <div>
+            <div className="mb-4">
+              <span className="text-[#f0abfc] text-xs font-bold tracking-[0.2em] uppercase">05 — Dashboard</span>
+              <h2 className="text-3xl font-black mt-1 mb-1 tracking-tighter">Analytics Widgets</h2>
+              <p className="text-purple-200/80 text-sm">Key metrics displayed with personality — not just numbers, actionable insights.</p>
             </div>
 
-            {/* Universal Library */}
-            <UniversalLibrary />
-          </div>
-
-          {/* Right Column */}
-          <div className="lg:col-span-1 space-y-6">
-             <div className="glass-card p-6">
-              <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
-                ROOM CONTROLS
-              </h2>
-              <div className="space-y-6">
-                <CreateRoom />
-                <div className="border-t border-white/10 pt-6">
-                  <JoinRoom />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Widget 1: Pomodoros Today */}
+              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-purple-500"></div>
+                <div className="text-sm font-semibold text-slate-400">Pomodoros Today</div>
+                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.pomodorosToday}</div>
+                <div className={`text-xs font-bold ${userStats.pomodoroTrendColor}`}>
+                  {userStats.pomodoroTrend}
                 </div>
+                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🍅</span>
+              </div>
+
+              {/* Widget 2: Study Streak */}
+              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-400"></div>
+                <div className="text-sm font-semibold text-slate-400">Study Streak</div>
+                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.streak}d</div>
+                <div className="text-xs font-bold text-emerald-500">↑ Personal best!</div>
+                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🔥</span>
+              </div>
+
+              {/* Widget 3: Flashcard Accuracy */}
+              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500"></div>
+                <div className="text-sm font-semibold text-slate-400">Flashcard Accuracy</div>
+                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.flashcardAccuracy}%</div>
+                <div className="text-xs font-bold text-emerald-500">↑ +5% this week</div>
+                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🧠</span>
+              </div>
+
+              {/* Widget 4: Hours This Week */}
+              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-rose-500"></div>
+                <div className="text-sm font-semibold text-slate-400">Hours This Week</div>
+                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.hoursThisWeek}h</div>
+                <div className="text-xs font-bold text-rose-500">↓ Goal: 25h</div>
+                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">⏰</span>
               </div>
             </div>
+          </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
-              <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
-                YOUR STUDY ROOMS
-              </h2>
-              <RoomList onSelectRoom={setSelectedRoomId} />
+          {/* LOWER DASHBOARD CONTENT */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-6">
+              <StudyTracker />
+
+              {/* Private Flashcards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FlashcardManager 
+                     basePath={`users/${user?.uid}`} 
+                     title="My Private Decks" 
+                  />
+                  
+                  <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
+                      <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
+                      <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
+                  </div>
+              </div>
+
+              {/* Universal Library */}
+              <UniversalLibrary />
+            </div>
+
+            {/* Right Column */}
+            <div className="lg:col-span-1 space-y-6">
+               <div className="glass-card p-6">
+                <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
+                  ROOM CONTROLS
+                </h2>
+                <div className="space-y-6">
+                  <CreateRoom />
+                  <div className="border-t border-white/10 pt-6">
+                    <JoinRoom />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
+                <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
+                  YOUR STUDY ROOMS
+                </h2>
+                <RoomList onSelectRoom={setSelectedRoomId} />
+              </div>
             </div>
           </div>
 

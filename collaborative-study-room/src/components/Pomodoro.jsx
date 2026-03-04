@@ -6,11 +6,9 @@ import { useAuth } from "../context/AuthContext";
 function PomodoroTimer({ roomId }) {
   const { user } = useAuth();
 
-  // CONFIG
   const FOCUS_TIME = 25 * 60;
   const BREAK_TIME = 5 * 60;
 
-  // STATE
   const [timeLeft, setTimeLeft] = useState(FOCUS_TIME);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedHours, setSelectedHours] = useState(1);
@@ -21,7 +19,6 @@ function PomodoroTimer({ roomId }) {
 
   const isBreak = mode === "break";
 
-  // START
   const handleStartPlan = () => {
     const totalCycles = selectedHours * 2;
     setCyclesTotal(totalCycles);
@@ -32,7 +29,6 @@ function PomodoroTimer({ roomId }) {
     setIsRunning(true);
   };
 
-  // SAVE SESSION
   const saveSession = async () => {
     try {
       await addDoc(collection(db, "users", user.uid, "studySessions"), {
@@ -46,7 +42,6 @@ function PomodoroTimer({ roomId }) {
     }
   };
 
-  // SWITCH FOCUS / BREAK
   const switchPhase = () => {
     if (mode === "focus") {
       saveSession();
@@ -70,7 +65,6 @@ function PomodoroTimer({ roomId }) {
     }
   };
 
-  // TIMER
   useEffect(() => {
     if (!isRunning) return;
 
@@ -114,12 +108,12 @@ function PomodoroTimer({ roomId }) {
       {!isSessionActive ? (
         <div className="text-center space-y-6">
           <h2 className="text-2xl font-black">Focus Timer</h2>
-          <p className="opacity-70">Set your study goal</p>
+          <p className="opacity-70 font-bold uppercase tracking-wider text-xs">Set your study goal</p>
 
           <select
             value={selectedHours}
             onChange={(e) => setSelectedHours(Number(e.target.value))}
-            className="w-full p-4 rounded-2xl border font-bold text-slate-700"
+            className="w-full p-4 rounded-2xl border-2 font-bold text-slate-700 outline-none focus:border-purple-300"
           >
             {[...Array(12)].map((_, i) => (
               <option key={i + 1} value={i + 1}>
@@ -130,50 +124,47 @@ function PomodoroTimer({ roomId }) {
 
           <button
             onClick={handleStartPlan}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold tracking-widest uppercase text-sm"
           >
             Start Study Plan
           </button>
 
-          <p className="text-xs opacity-60 uppercase">
+          <p className="text-xs opacity-60 font-bold uppercase tracking-widest mt-2">
             5-min breaks included
           </p>
         </div>
       ) : (
         <div className="text-center">
-          {/* MODE BADGE */}
           <div className="flex justify-between mb-6">
             <span
               className={`px-4 py-1 rounded-full text-xs font-black tracking-widest
               ${
                 isBreak
-                  ? "bg-white text-emerald-600"
-                  : "bg-rose-500 text-white"
+                  ? "bg-white text-emerald-600 shadow-sm"
+                  : "bg-rose-500 text-white shadow-md"
               }`}
             >
               {isBreak ? "☕ BREAK MODE" : "🔥 FOCUS MODE"}
             </span>
 
-            <span className="text-xs opacity-70">
+            <span className="text-xs font-bold opacity-70 tracking-wider">
               Cycle {Math.ceil((cyclesCompleted + 1) / 2)} of{" "}
               {cyclesTotal / 2}
             </span>
           </div>
 
-          {/* TIMER */}
-          <div className="text-8xl font-black mb-8">
+          <div className="text-8xl font-black mb-8 tracking-tighter drop-shadow-sm">
             {formatTime(timeLeft)}
           </div>
 
-          {/* BUTTONS */}
           <div className="flex gap-4">
             <button
               onClick={() => setIsRunning(!isRunning)}
-              className={`flex-1 py-4 rounded-2xl font-bold uppercase
+              className={`flex-1 py-4 rounded-2xl font-bold uppercase tracking-wider text-sm shadow-md transition-all
               ${
                 isRunning
-                  ? "bg-yellow-400 text-black"
-                  : "bg-indigo-600 text-white"
+                  ? "bg-amber-400 text-amber-950 hover:bg-amber-300"
+                  : "bg-[#1a0533] text-white hover:bg-[#2d0b59]"
               }`}
             >
               {isRunning ? "Pause" : "Resume"}
@@ -181,23 +172,22 @@ function PomodoroTimer({ roomId }) {
 
             <button
               onClick={handleReset}
-              className="flex-1 py-4 rounded-2xl bg-white/70 text-black font-bold"
+              className="flex-1 py-4 rounded-2xl bg-white text-slate-800 border-2 border-slate-100 font-bold uppercase tracking-wider text-sm hover:bg-slate-50 transition-all"
             >
               Reset
             </button>
           </div>
 
-          {/* PROGRESS */}
           <div className="mt-8">
-            <div className="h-3 bg-white/30 rounded-full overflow-hidden">
+            <div className={`h-3 rounded-full overflow-hidden ${isBreak ? 'bg-white/30' : 'bg-slate-100'}`}>
               <div
-                className="h-full bg-white transition-all duration-700"
+                className={`h-full transition-all duration-700 ${isBreak ? 'bg-white' : 'bg-purple-500'}`}
                 style={{
                   width: `${(cyclesCompleted / cyclesTotal) * 100}%`,
                 }}
               />
             </div>
-            <p className="text-xs mt-2 opacity-70">Session Progress</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest mt-3 opacity-60">Session Progress</p>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { signOut } from "firebase/auth";        
 import { auth, db } from "../firebase"; 
-import { doc, getDoc } from "firebase/firestore"; 
+import { doc, getDoc, collection, query, orderBy, onSnapshot } from "firebase/firestore"; 
 import { useAuth } from "../context/AuthContext";
 
 import JoinRoom from "../components/JoinRoom";
@@ -16,7 +16,6 @@ import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
 import FlashcardManager from "../components/FlashcardManager";
 import CollaborativeEditor from "../components/CollaborativeEditor"; 
-
 import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
 
@@ -27,12 +26,13 @@ function Dashboard() {
   const [isFlowActive, setIsFlowActive] = useState("focus");
   
   const [currentRoomName, setCurrentRoomName] = useState("");
-  // NEW: State to hold the short room code
   const [currentRoomCode, setCurrentRoomCode] = useState("");
+  
+  const [userStats, setUserStats] = useState({ streak: 0, totalPomodoros: 0 });
 
   const navigate = useNavigate(); 
 
-  // Fetch User Data
+  // Fetch User Display Name
   useEffect(() => {
     const fetchUserData = async () => {
       if (user?.uid) {
@@ -50,11 +50,62 @@ function Dashboard() {
         }
       }
     };
-
     fetchUserData();
   }, [user]);
 
-  // UPDATED: Fetch Room Name AND Short Code whenever a room is selected
+  // CALCULATE STATS FROM STUDY SESSIONS
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const q = query(
+      collection(db, "users", user.uid, "studySessions"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const sessions = snap.docs.map((doc) => doc.data());
+      const total = sessions.length;
+
+      // Calculate Streak
+      const dates = new Set();
+      sessions.forEach((s) => {
+        const dateObj = s.createdAt ? s.createdAt.toDate() : new Date();
+        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+        dates.add(dateStr);
+      });
+
+      const uniqueDates = Array.from(dates);
+      let currentStreak = 0;
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      
+      const todayStr = formatDate(today);
+      const yesterdayStr = formatDate(yesterday);
+
+      if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
+        let checkDate = uniqueDates.includes(todayStr) ? today : yesterday;
+        
+        while (true) {
+          const dateStr = formatDate(checkDate);
+          if (uniqueDates.includes(dateStr)) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1); 
+          } else {
+            break;
+          }
+        }
+      }
+
+      setUserStats({ streak: currentStreak, totalPomodoros: total });
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Fetch Room Name AND Short Code whenever a room is selected
   useEffect(() => {
     const fetchRoomDetails = async () => {
       if (!selectedRoomId) {
@@ -67,7 +118,6 @@ function Dashboard() {
         if (roomDoc.exists()) {
           const data = roomDoc.data();
           setCurrentRoomName(data.name || "STUDY ROOM");
-          // Grab the short code field (fallback to ID if missing for older rooms)
           setCurrentRoomCode(data.code || data.roomCode || selectedRoomId); 
         }
       } catch (error) {
@@ -123,9 +173,17 @@ function Dashboard() {
               <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
                 HI, {displayName} 👋
               </h1>
-              <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
-                Welcome back to your workspace.
-              </p>
+              {/* Stats Badges */}
+              <div className="flex flex-wrap gap-3 mt-4">
+                <div className="flex items-center gap-2 bg-black/20 px-4 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm shadow-sm">
+                  <span className="text-orange-400 text-lg drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]">🔥</span>
+                  <span className="text-xs font-bold tracking-widest text-white">{userStats.streak}-DAY STREAK</span>
+                </div>
+                <div className="flex items-center gap-2 bg-black/20 px-4 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm shadow-sm">
+                  <span className="text-rose-400 text-lg drop-shadow-[0_0_8px_rgba(251,113,133,0.8)]">🍅</span>
+                  <span className="text-xs font-bold tracking-widest text-white">{userStats.totalPomodoros} COMPLETED</span>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -167,7 +225,6 @@ function Dashboard() {
               {/* Row 1: Video + Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <VideoRoom roomId={selectedRoomId} />
-                 
                  <FlashcardManager 
                     basePath={`rooms/${selectedRoomId}`} 
                     title="Room Decks" 
@@ -185,7 +242,6 @@ function Dashboard() {
                 <RoomResources roomId={selectedRoomId} />
               </div>
             </div>
-
             
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
@@ -193,7 +249,6 @@ function Dashboard() {
                 roomId={selectedRoomId}
                 onRunningChange={setIsFlowActive} 
               />
-
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
                 <RoomSidebar 
                   roomId={selectedRoomId} 

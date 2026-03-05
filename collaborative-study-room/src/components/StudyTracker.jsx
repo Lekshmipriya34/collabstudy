@@ -74,7 +74,8 @@ function StudyTracker() {
   }, [user]);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-6 overflow-hidden border border-purple-100">
+    // FIX 1: Removed 'overflow-hidden' from the main container
+    <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-purple-100">
       <div className="flex justify-between items-end mb-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Study Tracker</h2>
@@ -94,8 +95,8 @@ function StudyTracker() {
         </div>
       </div>
 
-      {/* --- THE CONTRIBUTION GRID --- */}
-      <div className="overflow-x-auto pb-2">
+      {/* FIX 2: Added pt-12 to give the tooltips physical room to render inside the scroll area */}
+      <div className="overflow-x-auto pb-4 pt-12 custom-scrollbar">
         <div 
            className="grid grid-flow-col gap-1 auto-cols-[minmax(10px,_1fr)] grid-rows-7 h-32 w-max"
         >
@@ -103,13 +104,21 @@ function StudyTracker() {
             const minutes = contributionData[dayItem.dateStr] || 0;
             const colorClass = getColor(minutes);
 
+            // FIX 3: Dynamic horizontal positioning for edge tooltips
+            let tooltipPosition = "left-1/2 -translate-x-1/2"; // Default (center)
+            if (index < 21) {
+              tooltipPosition = "left-0"; // First 3 columns align left
+            } else if (index > 343) {
+              tooltipPosition = "right-0"; // Last 3 columns align right
+            }
+
             return (
               <div
                 key={index}
                 className={`w-3 h-3 rounded-sm ${colorClass} hover:ring-2 hover:ring-purple-400 transition cursor-pointer relative group`}
               >
                 {/* TOOLTIP ON HOVER */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs p-2 rounded whitespace-nowrap z-50 pointer-events-none">
+                <div className={`absolute bottom-full ${tooltipPosition} mb-2 hidden group-hover:block bg-gray-900 text-white text-xs p-2.5 rounded-md whitespace-nowrap z-50 pointer-events-none shadow-xl`}>
                   <p className="font-semibold text-purple-200">{minutes} minutes</p>
                   <p className="text-gray-400">{dayItem.dateStr}</p>
                 </div>

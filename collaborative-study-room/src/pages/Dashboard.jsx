@@ -18,6 +18,7 @@ import FlashcardManager from "../components/FlashcardManager";
 import CollaborativeEditor from "../components/CollaborativeEditor"; 
 import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
+import EncryptedChat from "../components/EncryptedChat";
 
 function Dashboard() {
   const { user } = useAuth(); 
@@ -282,6 +283,10 @@ function Dashboard() {
                   onLeave={() => setSelectedRoomId(null)}
                 />
               </div>
+              <EncryptedChat 
+                roomId={selectedRoomId} 
+                roomCode={currentRoomCode} 
+              />
             </div>
 
           </div>

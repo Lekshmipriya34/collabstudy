@@ -19,6 +19,7 @@ import CollaborativeEditor from "../components/CollaborativeEditor";
 import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
 import EncryptedChat from "../components/EncryptedChat";
+import AmbientSoundscape from "../components/AmbientSoundscape";
 
 // IMPORT ONLY THE KEYCARD TRANSITION
 import RoomKeycardTransition from "../components/RoomKeycardTransition";
@@ -277,6 +278,7 @@ function Dashboard() {
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer roomId={selectedRoomId} onRunningChange={setIsFlowActive} />
+              <AmbientSoundscape roomId={selectedRoomId} />
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
                 <RoomSidebar roomId={selectedRoomId} isRunning={true} onLeave={() => setSelectedRoomId(null)} />
               </div>

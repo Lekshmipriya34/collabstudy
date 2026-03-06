@@ -20,28 +20,31 @@ import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
 import EncryptedChat from "../components/EncryptedChat";
 
+// IMPORT ONLY THE KEYCARD TRANSITION
+import RoomKeycardTransition from "../components/RoomKeycardTransition";
+
 function Dashboard() {
   const { user } = useAuth(); 
   const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [pendingRoom, setPendingRoom] = useState(null); // Holds room data while keycard animates
   const [isFlowActive, setIsFlowActive] = useState("focus");
   
   const [currentRoomName, setCurrentRoomName] = useState("");
   const [currentRoomCode, setCurrentRoomCode] = useState("");
   
-  // UPDATED: Advanced state to hold detailed analytics
   const [userStats, setUserStats] = useState({ 
     streak: 0, 
     pomodorosToday: 0,
     pomodoroTrend: "",
     pomodoroTrendColor: "",
     hoursThisWeek: 0,
-    flashcardAccuracy: 87 // Mocked for UI, can be connected to flashcard db later
+    flashcardAccuracy: 87 
   });
 
   const navigate = useNavigate(); 
 
-  // Fetch User Display Name
+  // 1. FETCH USER DATA
   useEffect(() => {
     const fetchUserData = async () => {
       if (user?.uid) {
@@ -59,11 +62,10 @@ function Dashboard() {
         }
       }
     };
-
     fetchUserData();
   }, [user]);
 
-  // CALCULATE ADVANCED STATS FROM STUDY SESSIONS
+  // 2. CALCULATE STATS
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -101,7 +103,6 @@ function Dashboard() {
         if (dateObj >= oneWeekAgo) pThisWeek++;
       });
 
-      // Calculate Streak
       const uniqueDates = Array.from(dates);
       let currentStreak = 0;
 
@@ -118,11 +119,9 @@ function Dashboard() {
         }
       }
 
-      // Calculate Trends & Hours
       const diff = pToday - pYesterday;
       const trendText = diff >= 0 ? `↑ +${diff} vs yesterday` : `↓ ${Math.abs(diff)} vs yesterday`;
       const trendColor = diff >= 0 ? "text-emerald-500" : "text-rose-500";
-      
       const hours = ((pThisWeek * 25) / 60).toFixed(1);
 
       setUserStats({ 
@@ -131,14 +130,14 @@ function Dashboard() {
         pomodoroTrend: trendText,
         pomodoroTrendColor: trendColor,
         hoursThisWeek: hours,
-        flashcardAccuracy: 87 // keeping mock for now
+        flashcardAccuracy: 87 
       });
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // Fetch Room Name AND Short Code whenever a room is selected
+  // 3. FETCH CURRENT ROOM DETAILS
   useEffect(() => {
     const fetchRoomDetails = async () => {
       if (!selectedRoomId) {
@@ -157,9 +156,18 @@ function Dashboard() {
         console.error("Error fetching room details:", error);
       }
     };
-
     fetchRoomDetails();
   }, [selectedRoomId]);
+
+  // ── HANDLERS ──
+  const enterRoom = async (roomId) => {
+    const roomDoc = await getDoc(doc(db, "rooms", roomId));
+    if (roomDoc.exists()) {
+      setPendingRoom({ roomId, ...roomDoc.data() });
+    } else {
+      setSelectedRoomId(roomId); 
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -170,6 +178,20 @@ function Dashboard() {
     }
   };
 
+  // ── CONDITIONAL RENDER: KEYCARD OVERLAY ──
+  if (pendingRoom) {
+    return (
+      <RoomKeycardTransition
+        room={pendingRoom}
+        onComplete={() => { 
+          setSelectedRoomId(pendingRoom.roomId); 
+          setPendingRoom(null); 
+        }}
+      />
+    );
+  }
+
+  // ── MAIN RENDER ──
   return (
     <div
       className={`min-h-screen p-6 font-mono text-white transition-all duration-1000
@@ -183,8 +205,6 @@ function Dashboard() {
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        
-        {/* DYNAMIC HEADER TEXT */}
         <div>
           {selectedRoomId ? (
             <div className="flex flex-col">
@@ -236,33 +256,18 @@ function Dashboard() {
       {selectedRoomId ? (
         /* ===== INSIDE ROOM VIEW ===== */
         <div className="relative">
-
-          {/* Floating ShoutOuts */}
           <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000]">
             <ShoutOuts roomId={selectedRoomId} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
             {/* Main Column */}
             <div className="lg:col-span-3 space-y-6">
-              
-              {/* Row 1: Video + Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <VideoRoom roomId={selectedRoomId} />
-                 
-                 <FlashcardManager 
-                    basePath={`rooms/${selectedRoomId}`} 
-                    title="Room Decks" 
-                 />
+                 <FlashcardManager basePath={`rooms/${selectedRoomId}`} title="Room Decks" />
               </div>
-
-              {/* Row 2: Shared Notes */}
-              <CollaborativeEditor 
-                roomId={selectedRoomId} 
-              />
-
-              {/* Row 3: Tasks + Room Resources */}
+              <CollaborativeEditor roomId={selectedRoomId} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TaskManager roomId={selectedRoomId} />
                 <RoomResources roomId={selectedRoomId} />
@@ -271,31 +276,19 @@ function Dashboard() {
             
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
-              <PomodoroTimer
-                roomId={selectedRoomId}
-                onRunningChange={setIsFlowActive} 
-              />
-
+              <PomodoroTimer roomId={selectedRoomId} onRunningChange={setIsFlowActive} />
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
-                <RoomSidebar 
-                  roomId={selectedRoomId} 
-                  isRunning={true} 
-                  onLeave={() => setSelectedRoomId(null)}
-                />
+                <RoomSidebar roomId={selectedRoomId} isRunning={true} onLeave={() => setSelectedRoomId(null)} />
               </div>
-              <EncryptedChat 
-                roomId={selectedRoomId} 
-                roomCode={currentRoomCode} 
-              />
+              <EncryptedChat roomId={selectedRoomId} roomCode={currentRoomCode} />
             </div>
-
           </div>
         </div>
       ) : (
         /* ===== MAIN DASHBOARD VIEW ===== */
         <div className="space-y-8">
           
-          {/* NEW: ANALYTICS WIDGETS SECTION */}
+          {/* ANALYTICS WIDGETS SECTION */}
           <div>
             <div className="mb-4">
               <span className="text-[#f0abfc] text-xs font-bold tracking-[0.2em] uppercase">05 — Dashboard</span>
@@ -304,7 +297,6 @@ function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Widget 1: Pomodoros Today */}
               <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-purple-500"></div>
                 <div className="text-sm font-semibold text-slate-400">Pomodoros Today</div>
@@ -315,7 +307,6 @@ function Dashboard() {
                 <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🍅</span>
               </div>
 
-              {/* Widget 2: Study Streak */}
               <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-400"></div>
                 <div className="text-sm font-semibold text-slate-400">Study Streak</div>
@@ -324,7 +315,6 @@ function Dashboard() {
                 <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🔥</span>
               </div>
 
-              {/* Widget 3: Flashcard Accuracy */}
               <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500"></div>
                 <div className="text-sm font-semibold text-slate-400">Flashcard Accuracy</div>
@@ -333,7 +323,6 @@ function Dashboard() {
                 <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🧠</span>
               </div>
 
-              {/* Widget 4: Hours This Week */}
               <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-rose-500"></div>
                 <div className="text-sm font-semibold text-slate-400">Hours This Week</div>
@@ -346,33 +335,21 @@ function Dashboard() {
 
           {/* LOWER DASHBOARD CONTENT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
               <StudyTracker />
-
-              {/* Private Flashcards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FlashcardManager 
-                     basePath={`users/${user?.uid}`} 
-                     title="My Private Decks" 
-                  />
-                  
+                  <FlashcardManager basePath={`users/${user?.uid}`} title="My Private Decks" />
                   <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
                       <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
                       <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
                   </div>
               </div>
-
-              {/* Universal Library */}
               <UniversalLibrary />
             </div>
 
-            {/* Right Column */}
             <div className="lg:col-span-1 space-y-6">
                <div className="glass-card p-6">
-                <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">
-                  ROOM CONTROLS
-                </h2>
+                <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">ROOM CONTROLS</h2>
                 <div className="space-y-6">
                   <CreateRoom />
                   <div className="border-t border-white/10 pt-6">
@@ -382,10 +359,8 @@ function Dashboard() {
               </div>
 
               <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
-                <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">
-                  YOUR STUDY ROOMS
-                </h2>
-                <RoomList onSelectRoom={setSelectedRoomId} />
+                <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">YOUR STUDY ROOMS</h2>
+                <RoomList onSelectRoom={enterRoom} />
               </div>
             </div>
           </div>

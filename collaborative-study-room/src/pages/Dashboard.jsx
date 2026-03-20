@@ -26,6 +26,7 @@ import RoomKeycardTransition from "../components/RoomKeycardTransition";
 
 function Dashboard() {
   const { user } = useAuth(); 
+  
   const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [pendingRoom, setPendingRoom] = useState(null); // Holds room data while keycard animates
@@ -33,6 +34,7 @@ function Dashboard() {
   
   const [currentRoomName, setCurrentRoomName] = useState("");
   const [currentRoomCode, setCurrentRoomCode] = useState("");
+  const [currentRoomHostId, setCurrentRoomHostId] = useState(null); 
   
   const [userStats, setUserStats] = useState({ 
     streak: 0, 
@@ -144,6 +146,7 @@ function Dashboard() {
       if (!selectedRoomId) {
         setCurrentRoomName("");
         setCurrentRoomCode("");
+        setCurrentRoomHostId(null); // reset
         return;
       }
       try {
@@ -151,7 +154,8 @@ function Dashboard() {
         if (roomDoc.exists()) {
           const data = roomDoc.data();
           setCurrentRoomName(data.name || "STUDY ROOM");
-          setCurrentRoomCode(data.code || data.roomCode || selectedRoomId); 
+          setCurrentRoomCode(data.code || data.roomCode || selectedRoomId);
+          setCurrentRoomHostId(data.createdBy); // Grab the host's UID
         }
       } catch (error) {
         console.error("Error fetching room details:", error);
@@ -268,20 +272,30 @@ function Dashboard() {
                  <VideoRoom roomId={selectedRoomId} />
                  <FlashcardManager basePath={`rooms/${selectedRoomId}`} title="Room Decks" />
               </div>
+              
               <CollaborativeEditor roomId={selectedRoomId} />
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TaskManager roomId={selectedRoomId} />
-                <RoomResources roomId={selectedRoomId} />
+                
+                {/* Passes isHost so only the creator can delete resources */}
+                <RoomResources 
+                  roomId={selectedRoomId} 
+                  isHost={currentRoomHostId === user?.uid} 
+                />
               </div>
             </div>
             
             {/* Right Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer roomId={selectedRoomId} onRunningChange={setIsFlowActive} />
+              
               <AmbientSoundscape roomId={selectedRoomId} />
+              
               <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
                 <RoomSidebar roomId={selectedRoomId} isRunning={true} onLeave={() => setSelectedRoomId(null)} />
               </div>
+              
               <EncryptedChat roomId={selectedRoomId} roomCode={currentRoomCode} />
             </div>
           </div>
@@ -339,6 +353,7 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <StudyTracker />
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FlashcardManager basePath={`users/${user?.uid}`} title="My Private Decks" />
                   <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
@@ -346,6 +361,7 @@ function Dashboard() {
                       <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
                   </div>
               </div>
+              
               <UniversalLibrary />
             </div>
 

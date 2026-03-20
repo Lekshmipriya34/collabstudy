@@ -306,7 +306,8 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
         placeholder="Subject / Topic (e.g. Physics)"
-        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mb-3 outline-none focus:border-purple-400 bg-white"
+        // FIXED: Added text-slate-900 placeholder-slate-400
+        className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 mb-3 outline-none focus:border-purple-400 bg-white"
       />
 
       {/* YouTube tab */}
@@ -314,10 +315,12 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <input value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="Paste YouTube URL…"
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Custom title (optional)"
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitYoutube} busy={busy} done={isDone}
             checkingLabel="Checking video…" uploadingLabel="Generating summary…" label="Add & Summarise" />
         </div>
@@ -328,10 +331,12 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <input value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="https://…"
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Label (optional)"
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitLink} busy={busy} done={isDone}
             checkingLabel="Checking link…" uploadingLabel="Saving…" label="Add Link" />
         </div>
@@ -350,7 +355,8 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
           </label>
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Description (helps the AI check)"
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitFile} busy={busy} done={isDone}
             checkingLabel="Screening file…" uploadingLabel="Uploading…" label="Upload File" />
         </div>
@@ -361,7 +367,8 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
             placeholder="Quick note for the room…" rows={3}
-            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white resize-none" />
+            // FIXED: Added text-slate-900 placeholder-slate-400
+            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white resize-none" />
           <SubmitBtn onClick={submitNote} busy={busy} done={isDone}
             checkingLabel="" uploadingLabel="Saving…" label="Save Note" />
         </div>

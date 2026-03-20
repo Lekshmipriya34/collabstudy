@@ -19,6 +19,7 @@ import {
   summarizeYoutubeVideo,
   fetchYoutubeMetadata,
   extractYoutubeId,
+  classifyYoutubeUrl,
   getYoutubeThumbnail,
 } from "../utils/contentModeration";
 
@@ -114,7 +115,7 @@ export default function RoomResources({ roomId, isHost = false }) {
       </div>
 
       {/* Resource list */}
-      <div className="divide-y divide-slate-50 max-h-[420px] overflow-y-auto custom-scrollbar">
+      <div className="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
         {filtered.length === 0 && (
           <div className="py-10 text-center text-slate-400 text-sm">
             No resources yet. Add PDFs, YouTube links, or notes!
@@ -158,34 +159,29 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
     setStatus("checking");
     setRejection("");
 
-    // 1. Quick domain check
-    const quick = quickCheckUrl(url);
-    if (quick.allowed === false) {
-      setStatus("rejected"); setRejection(quick.reason); return;
+    // 1. Structural check — instantly rejects playlists, channels, shorts, homepage
+    const ytClass = classifyYoutubeUrl(url);
+    if (!ytClass.allowed) {
+      setStatus("rejected"); setRejection(ytClass.reason); return;
     }
+    const videoId = ytClass.videoId;
 
-    // 2. Check it's actually a YouTube URL
-    const videoId = extractYoutubeId(url);
-    if (!videoId) {
-      setStatus("rejected"); setRejection("That doesn't look like a valid YouTube URL."); return;
-    }
-
-    // 3. Fetch metadata
+    // 2. Fetch metadata (title + channel name) for AI to assess content
     const meta = await fetchYoutubeMetadata(url);
 
-    // 4. AI moderation on the video title
+    // 3. AI content check — rejects movies, music videos, entertainment
     const mod = await moderateUrlWithAI(url, meta.title, `YouTube video by ${meta.channel}`);
     if (!mod.allowed) {
       setStatus("rejected"); setRejection(mod.reason); return;
     }
 
-    // 5. Generate summary
-    setStatus("uploading"); // repurpose as "summarizing"
+    // 4. All checks passed — generate study summary
+    setStatus("uploading");
     const summary = await summarizeYoutubeVideo({
       title: meta.title, channel: meta.channel, url, subject,
     });
 
-    // 6. Save to Firestore
+    // 5. Save to Firestore
     await addDoc(collection(db, "resources"), {
       roomId,
       type:      "youtube",
@@ -195,7 +191,7 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
       thumbnail: meta.thumbnail || getYoutubeThumbnail(videoId),
       channel:   meta.channel,
       subject:   subject || "General",
-      summary,                        // stored alongside the resource
+      summary,
       uploadedBy: { uid: userId, name: userName },
       createdAt: serverTimestamp(),
       pinned:    false,
@@ -310,7 +306,7 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
         placeholder="Subject / Topic (e.g. Physics)"
-        className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 mb-3 outline-none focus:border-purple-400 bg-white"
+        className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 mb-3 outline-none focus:border-purple-400 bg-white"
       />
 
       {/* YouTube tab */}
@@ -318,10 +314,10 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <input value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="Paste YouTube URL…"
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Custom title (optional)"
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitYoutube} busy={busy} done={isDone}
             checkingLabel="Checking video…" uploadingLabel="Generating summary…" label="Add & Summarise" />
         </div>
@@ -332,10 +328,10 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <input value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="https://…"
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Label (optional)"
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitLink} busy={busy} done={isDone}
             checkingLabel="Checking link…" uploadingLabel="Saving…" label="Add Link" />
         </div>
@@ -345,7 +341,7 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
       {tab === "file" && (
         <div className="space-y-2">
           <label className="block border-2 border-dashed border-slate-200 hover:border-purple-300 rounded-xl p-4 text-center cursor-pointer transition bg-white">
-            <span className="text-slate-600 font-medium text-xs">
+            <span className="text-slate-400 text-xs">
               {file ? `📄 ${file.name}` : "Click to choose PDF, Word, PowerPoint…"}
             </span>
             <input type="file" className="hidden"
@@ -354,7 +350,7 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
           </label>
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Description (helps the AI check)"
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white" />
           <SubmitBtn onClick={submitFile} busy={busy} done={isDone}
             checkingLabel="Screening file…" uploadingLabel="Uploading…" label="Upload File" />
         </div>
@@ -365,7 +361,7 @@ function AddResourceForm({ roomId, userId, userName, onClose }) {
         <div className="space-y-2">
           <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)}
             placeholder="Quick note for the room…" rows={3}
-            className="w-full text-xs text-slate-900 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white resize-none" />
+            className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-purple-400 bg-white resize-none" />
           <SubmitBtn onClick={submitNote} busy={busy} done={isDone}
             checkingLabel="" uploadingLabel="Saving…" label="Save Note" />
         </div>

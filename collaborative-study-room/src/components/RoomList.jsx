@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
+import { doc, deleteDoc } from "firebase/firestore";
+
 
 const THEME_MAP = {
   purple: { bg: "from-[#8b2fc9] to-[#6018a3]", btn: "bg-[#8b2fc9] hover:bg-[#6018a3]", hex: "#8b2fc9" },

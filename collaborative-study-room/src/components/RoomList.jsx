@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, doc, deleteDoc, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
-import { doc, deleteDoc } from "firebase/firestore";
-
+// COMBINED ALL FIREBASE IMPORTS INTO ONE LINE
+import { collection, query, where, onSnapshot, doc, deleteDoc, orderBy } from "firebase/firestore";
 
 const THEME_MAP = {
   purple: { bg: "from-[#8b2fc9] to-[#6018a3]", btn: "bg-[#8b2fc9] hover:bg-[#6018a3]", hex: "#8b2fc9" },
@@ -14,8 +12,6 @@ const THEME_MAP = {
   orange: { bg: "from-[#d97706] to-[#92400e]", btn: "bg-[#d97706] hover:bg-[#92400e]", hex: "#d97706" },
 };
 
-const fallbackInitials = ["A", "R", "P", "K", "S", "M", "N", "T"];
-
 function RoomList({ onSelectRoom }) {
   const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
@@ -24,7 +20,6 @@ function RoomList({ onSelectRoom }) {
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Added an optional orderBy to keep the list consistent
     const q = query(
       collection(db, "rooms"),
       where("members", "array-contains", user.uid)
@@ -36,6 +31,7 @@ function RoomList({ onSelectRoom }) {
         ...doc.data(),
       }));
       
+      // Sorting by creation date
       roomData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
       setRooms(roomData);
       setLoading(false);
@@ -56,6 +52,8 @@ function RoomList({ onSelectRoom }) {
     }
   };
 
+  if (loading) return <div className="text-center py-4 text-white/20 animate-pulse text-[10px] font-black italic tracking-widest">LOADING ROOMS...</div>;
+
   return (
     <div className="space-y-3">
       {rooms.length === 0 && (
@@ -67,11 +65,9 @@ function RoomList({ onSelectRoom }) {
       {rooms.map((room) => (
         <div
           key={room.id}
-          // Whole card click for UX
           onClick={() => onSelectRoom(room.id)}
           className="group bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-2xl transition-all cursor-pointer flex items-center justify-between gap-4"
         >
-          {/* Room Info */}
           <div className="flex-grow min-w-0">
             <h3 className="font-bold text-white/90 truncate text-sm uppercase tracking-tight" title={room.name}>
               {room.name}
@@ -81,23 +77,24 @@ function RoomList({ onSelectRoom }) {
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-1 flex-shrink-0">
-            
             <button
               onClick={(e) => handleDelete(e, room.id)}
               className="p-2 text-white/20 hover:text-rose-400 transition-colors"
               title="Delete Room"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
             </button>
             
             <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
 
-            {/* FIXED: Added onClick to the Enter button */}
             <button
               onClick={(e) => {
-                e.stopPropagation(); // Prevents double-triggering the parent onClick
+                e.stopPropagation();
                 onSelectRoom(room.id);
               }}
               className="border border-white/20 bg-white/5 hover:bg-white hover:text-purple-900 text-white/80 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all shadow-lg active:scale-95"

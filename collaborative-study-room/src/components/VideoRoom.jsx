@@ -5,57 +5,58 @@ import { ZegoUIKitPrebuilt } from "@zegocloud/zego-uikit-prebuilt";
 function VideoRoom({ roomId }) {
   const { user } = useAuth();
   const videoContainerRef = useRef(null);
+  
+  // 1. THE FIX: A lock to prevent React Strict Mode from double-loading Zego
+  const joinedRef = useRef(false); 
 
   useEffect(() => {
+    // Wait until the div exists and we have user data
     if (!videoContainerRef.current || !user || !roomId) return;
-
-    let zp = null;
+    
+    // If we already joined, stop here!
+    if (joinedRef.current) return; 
 
     const startMeeting = async () => {
-      // 1. Get your Zego credentials from the .env file
+      // 2. THE FIX: Force the AppID to be a Number, not a string
       const appID = Number(import.meta.env.VITE_ZEGO_APP_ID);
       const serverSecret = import.meta.env.VITE_ZEGO_SERVER_SECRET;
 
       if (!appID || !serverSecret) {
-        console.error("ZegoCloud credentials missing in .env file!");
+        console.error("ZegoCloud Error: Missing AppID or ServerSecret in .env");
         return;
       }
 
-      // 2. Generate a token so the user can join securely
-      const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
-        appID,
-        serverSecret,
-        roomId,             // The room they are joining
-        user.uid,           // Their unique Firebase ID
-        user.displayName || "Scholar" // Their display name
-      );
+      try {
+        const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
+          appID,
+          serverSecret,
+          roomId,             
+          user.uid,           
+          user.displayName || "Scholar" 
+        );
 
-      // 3. Initialize the Zego Room
-      zp = ZegoUIKitPrebuilt.create(kitToken);
+        const zp = ZegoUIKitPrebuilt.create(kitToken);
+        
+        // Lock the room so it doesn't duplicate
+        joinedRef.current = true; 
 
-      // 4. Mount the UI to our div
-      zp.joinRoom({
-        container: videoContainerRef.current,
-        scenario: {
-          mode: ZegoUIKitPrebuilt.GroupCall, // Configured for multi-user study groups!
-        },
-        showScreenSharingButton: true,       // Essential for study rooms
-        showPreJoinView: false,              // Skip the lobby, jump right in
-        turnOnCameraWhenJoining: false,      // Start with camera off for privacy
-        turnOnMicrophoneWhenJoining: false,  // Start muted
-        layout: "Grid",                      // Auto-arranges tiles for multiple people
-        maxUsers: 10,                        // Cap the study room size if you want
-      });
+        zp.joinRoom({
+          container: videoContainerRef.current,
+          scenario: {
+            mode: ZegoUIKitPrebuilt.GroupCall, 
+          },
+          showScreenSharingButton: true,      
+          showPreJoinView: false,             
+          turnOnCameraWhenJoining: false,     
+          turnOnMicrophoneWhenJoining: false, 
+        });
+      } catch (error) {
+        console.error("ZegoCloud Failed to load:", error);
+      }
     };
 
     startMeeting();
 
-    // 5. Clean up and leave the room when the component unmounts
-    return () => {
-      if (zp) {
-        zp.destroy();
-      }
-    };
   }, [roomId, user]);
 
   return (
@@ -73,10 +74,10 @@ function VideoRoom({ roomId }) {
         </div>
       </div>
 
-      {/* ZegoCloud will inject the entire video grid and controls right here */}
+      {/* The Zego UI Container - Note the explicit min-height! */}
       <div 
         ref={videoContainerRef} 
-        className="w-full h-[350px] md:h-[450px] lg:h-[500px]"
+        className="w-full min-h-[400px] md:h-[450px] lg:h-[500px]"
       />
     </div>
   );

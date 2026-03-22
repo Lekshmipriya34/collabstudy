@@ -1,4 +1,3 @@
-import ShoutOuts from "../components/ShoutOuts";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { signOut } from "firebase/auth";        
@@ -6,385 +5,220 @@ import { auth, db } from "../firebase";
 import { doc, getDoc, collection, query, orderBy, onSnapshot } from "firebase/firestore"; 
 import { useAuth } from "../context/AuthContext";
 
+// --- REQUIRED COMPONENT IMPORTS ---
 import JoinRoom from "../components/JoinRoom";
 import CreateRoom from "../components/CreateRoom";
 import RoomList from "../components/RoomList";
 import TaskManager from "../components/TaskManager";
 import PomodoroTimer from "../components/Pomodoro"; 
 import StudyTracker from "../components/StudyTracker"; 
-import RoomSidebar from "../components/RoomSidebar";
 import VideoRoom from "../components/VideoRoom";
 import FlashcardManager from "../components/FlashcardManager";
+import FlashcardDeck from "../components/FlashcardDeck"; 
 import CollaborativeEditor from "../components/CollaborativeEditor"; 
 import RoomResources from "../components/RoomResources";
 import UniversalLibrary from "../components/UniversalLibrary";
 import EncryptedChat from "../components/EncryptedChat";
 import AmbientSoundscape from "../components/AmbientSoundscape";
 
-// IMPORT ONLY THE KEYCARD TRANSITION
-import RoomKeycardTransition from "../components/RoomKeycardTransition";
-
 function Dashboard() {
   const { user } = useAuth(); 
+  const navigate = useNavigate(); 
   
   const [displayName, setDisplayName] = useState("SCHOLAR");
   const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [pendingRoom, setPendingRoom] = useState(null); // Holds room data while keycard animates
   const [isFlowActive, setIsFlowActive] = useState("focus");
+  const [activeDeck, setActiveDeck] = useState(null); 
   
   const [currentRoomName, setCurrentRoomName] = useState("");
   const [currentRoomCode, setCurrentRoomCode] = useState("");
   const [currentRoomHostId, setCurrentRoomHostId] = useState(null); 
   
   const [userStats, setUserStats] = useState({ 
-    streak: 0, 
-    pomodorosToday: 0,
-    pomodoroTrend: "",
-    pomodoroTrendColor: "",
-    hoursThisWeek: 0,
-    flashcardAccuracy: 87 
+    streak: 0, pomodorosToday: 0, hoursThisWeek: 0, flashcardAccuracy: 87 
   });
 
-  const navigate = useNavigate(); 
-
-  // 1. FETCH USER DATA
+  // 1. Fetch User Profile
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (user?.uid) {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userSnapshot = await getDoc(userDocRef);
-
-          if (userSnapshot.exists()) {
-            const data = userSnapshot.data();
-            const name = data.fullName || data.username || "Scholar";
-            setDisplayName(name.toUpperCase());
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
-      }
-    };
-    fetchUserData();
+    if (user?.uid) {
+      getDoc(doc(db, "users", user.uid)).then(snap => {
+        if (snap.exists()) setDisplayName(snap.data().fullName?.toUpperCase() || "SCHOLAR");
+      });
+    }
   }, [user]);
 
-  // 2. CALCULATE STATS
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    const q = query(
-      collection(db, "users", user.uid, "studySessions"),
-      orderBy("createdAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const sessions = snap.docs.map((doc) => doc.data());
-
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const oneWeekAgo = new Date(today);
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      
-      const todayStr = formatDate(today);
-      const yesterdayStr = formatDate(yesterday);
-
-      let pToday = 0;
-      let pYesterday = 0;
-      let pThisWeek = 0;
-      const dates = new Set();
-
-      sessions.forEach((s) => {
-        const dateObj = s.createdAt ? s.createdAt.toDate() : new Date();
-        const dateStr = formatDate(dateObj);
-        dates.add(dateStr);
-
-        if (dateStr === todayStr) pToday++;
-        if (dateStr === yesterdayStr) pYesterday++;
-        if (dateObj >= oneWeekAgo) pThisWeek++;
-      });
-
-      const uniqueDates = Array.from(dates);
-      let currentStreak = 0;
-
-      if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
-        let checkDate = uniqueDates.includes(todayStr) ? today : yesterday;
-        while (true) {
-          const dStr = formatDate(checkDate);
-          if (uniqueDates.includes(dStr)) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1); 
-          } else {
-            break;
-          }
-        }
-      }
-
-      const diff = pToday - pYesterday;
-      const trendText = diff >= 0 ? `↑ +${diff} vs yesterday` : `↓ ${Math.abs(diff)} vs yesterday`;
-      const trendColor = diff >= 0 ? "text-emerald-500" : "text-rose-500";
-      const hours = ((pThisWeek * 25) / 60).toFixed(1);
-
-      setUserStats({ 
-        streak: currentStreak, 
-        pomodorosToday: pToday,
-        pomodoroTrend: trendText,
-        pomodoroTrendColor: trendColor,
-        hoursThisWeek: hours,
-        flashcardAccuracy: 87 
-      });
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // 3. FETCH CURRENT ROOM DETAILS
-  useEffect(() => {
-    const fetchRoomDetails = async () => {
-      if (!selectedRoomId) {
-        setCurrentRoomName("");
-        setCurrentRoomCode("");
-        setCurrentRoomHostId(null); // reset
-        return;
-      }
-      try {
-        const roomDoc = await getDoc(doc(db, "rooms", selectedRoomId));
-        if (roomDoc.exists()) {
-          const data = roomDoc.data();
-          setCurrentRoomName(data.name || "STUDY ROOM");
-          setCurrentRoomCode(data.code || data.roomCode || selectedRoomId);
-          setCurrentRoomHostId(data.createdBy); // Grab the host's UID
-        }
-      } catch (error) {
-        console.error("Error fetching room details:", error);
-      }
-    };
-    fetchRoomDetails();
-  }, [selectedRoomId]);
-
-  // ── HANDLERS ──
+  // 2. Navigation: Enter Room
   const enterRoom = async (roomId) => {
-    const roomDoc = await getDoc(doc(db, "rooms", roomId));
-    if (roomDoc.exists()) {
-      setPendingRoom({ roomId, ...roomDoc.data() });
-    } else {
+    try {
+      const roomDoc = await getDoc(doc(db, "rooms", roomId));
+      if (roomDoc.exists()) {
+        const data = roomDoc.data();
+        setCurrentRoomName(data.name || "STUDY ROOM");
+        setCurrentRoomCode(data.code || data.roomCode || roomId);
+        setCurrentRoomHostId(data.createdBy);
+      }
+      setSelectedRoomId(roomId); 
+    } catch (error) {
+      console.error("Room Access Error:", error);
       setSelectedRoomId(roomId); 
     }
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate("/login"); 
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
+    try { await signOut(auth); navigate("/login"); }
+    catch (error) { console.error(error); }
   };
 
-  // ── CONDITIONAL RENDER: KEYCARD OVERLAY ──
-  if (pendingRoom) {
-    return (
-      <RoomKeycardTransition
-        room={pendingRoom}
-        onComplete={() => { 
-          setSelectedRoomId(pendingRoom.roomId); 
-          setPendingRoom(null); 
-        }}
-      />
-    );
-  }
+  const glassCard = "bg-white/80 backdrop-blur-3xl border border-white/40 shadow-2xl rounded-[2.5rem]";
 
-  // ── MAIN RENDER ──
   return (
-    <div
-      className={`min-h-screen p-6 font-mono text-white transition-all duration-1000
-        ${
-          isFlowActive === "break"
-            ? "bg-gradient-to-b from-emerald-400 via-emerald-500 to-emerald-700"
-            : "bg-gradient-to-b from-[#e879f9] to-[#4c1d95]"
-        }
-      `}
-    >
+    <div className={`min-h-screen p-6 font-mono text-white transition-all duration-1000 ${isFlowActive === "break" ? "bg-gradient-to-b from-emerald-400 to-emerald-700" : "bg-gradient-to-b from-[#e879f9] to-[#4c1d95]"}`}>
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          {selectedRoomId ? (
-            <div className="flex flex-col">
-              <h1 className="text-4xl font-bold tracking-widest drop-shadow-md flex items-center gap-3">
-                <span className="bg-white/20 px-3 py-1 rounded-xl text-2xl border border-white/30">🎧</span>
-                {currentRoomName.toUpperCase()}
-              </h1>
-              <div className="flex items-center mt-2">
-                <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2 pr-3">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
-                </span>
-                <span className="text-purple-200 text-xs font-bold border-l border-white/20 pl-3">
-                  ROOM CODE: <span className="font-mono text-white tracking-wider select-all ml-1 bg-white/10 px-2 py-0.5 rounded">{currentRoomCode}</span>
-                </span>
-              </div>
-            </div>
-          ) : (
-            <>
-              <h1 className="text-4xl font-bold tracking-widest drop-shadow-md">
-                HI, {displayName} 👋
-              </h1>
-              <p className="text-purple-200 text-sm mt-1 tracking-wide uppercase">
-                Welcome back to your workspace.
-              </p>
-            </>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-4 mt-4 md:mt-0">
+      {/* HEADER SECTION */}
+      <div className="flex justify-between items-center mb-10 max-w-[1600px] mx-auto">
+        <div className="flex items-center gap-4">
           {selectedRoomId && (
             <button 
-              onClick={() => setSelectedRoomId(null)}
-              className="text-sm font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-xl shadow-lg hover:bg-white/20 transition-all tracking-wide"
+              onClick={() => setSelectedRoomId(null)} 
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition active:scale-90"
             >
-              ← LEAVE ROOM
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </button>
           )}
+          <div>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white drop-shadow-2xl uppercase">
+              {selectedRoomId ? currentRoomName : `HI, ${displayName} 👋`}
+            </h1>
+            <p className="text-purple-100/60 text-[10px] mt-2 tracking-[0.4em] font-bold uppercase">
+              {selectedRoomId ? `LIVE ROOM ID: ${currentRoomCode}` : "Workspace Overview"}
+            </p>
+          </div>
+        </div>
 
+        <div className="flex items-center gap-4">
           <button 
-            onClick={handleLogout}
-            className="bg-[#1a1a1a] border-2 border-[#f0abfc] text-white px-6 py-2 rounded-xl shadow-lg hover:bg-[#d8a4e2] hover:text-black hover:border-[#d8a4e2] transition-all duration-300 font-bold tracking-wider text-sm"
+            onClick={() => setIsFlowActive(isFlowActive === "break" ? "focus" : "break")}
+            className={`flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-500 shadow-xl ${isFlowActive === "break" ? "bg-emerald-500 border-emerald-300 text-white" : "bg-white/10 border-white/20 hover:bg-white/20"}`}
           >
-            LOGOUT
+            <span className="text-xl">{isFlowActive === "break" ? "🧘" : "☕"}</span>
+            <div className="text-[10px] font-black uppercase tracking-tight hidden sm:block">
+               {isFlowActive === "break" ? "Resting" : "Take Break"}
+            </div>
           </button>
+          <button onClick={handleLogout} className="bg-black/90 border border-white/10 text-white px-6 py-3 rounded-2xl shadow-2xl hover:bg-white hover:text-black transition-all font-black tracking-widest text-[10px]">LOGOUT</button>
         </div>
       </div>
 
-      {/* DASHBOARD CONTENT */}
-      {selectedRoomId ? (
-        /* ===== INSIDE ROOM VIEW ===== */
-        <div className="relative">
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000]">
-            <ShoutOuts roomId={selectedRoomId} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Main Column */}
+      <div className="max-w-[1600px] mx-auto">
+        {selectedRoomId ? (
+          /* ==========================================================
+             INSIDE THE STUDY ROOM: COLLABORATIVE FEATURES
+             ========================================================== */
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom duration-500">
             <div className="lg:col-span-3 space-y-6">
+              
+              {/* TOP ROW: VIDEO & FLASHCARDS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <VideoRoom roomId={selectedRoomId} />
-                 <FlashcardManager basePath={`rooms/${selectedRoomId}`} title="Room Decks" />
+                 <div className={`${glassCard} p-8 flex flex-col h-[400px] shadow-indigo-500/10`}>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase mb-4 italic">Room Decks</h2>
+                    <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                       <FlashcardManager basePath={`rooms/${selectedRoomId}`} title="" onSelectDeck={(deck) => setActiveDeck(deck)} />
+                    </div>
+                 </div>
               </div>
-              
-              <CollaborativeEditor roomId={selectedRoomId} />
-              
+
+              {/* SHARED EDITOR */}
+              <div className={`${glassCard} p-1 shadow-indigo-500/10`}>
+                <CollaborativeEditor roomId={selectedRoomId} />
+              </div>
+
+              {/* BOTTOM ROW: TASKS & FILES */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TaskManager roomId={selectedRoomId} />
-                
-                {/* Passes isHost so only the creator can delete resources */}
-                <RoomResources 
-                  roomId={selectedRoomId} 
-                  isHost={currentRoomHostId === user?.uid} 
-                />
+                <RoomResources roomId={selectedRoomId} isHost={currentRoomHostId === user?.uid} />
               </div>
             </div>
             
-            {/* Right Sidebar */}
+            {/* SIDEBAR: POMODORO, SOUNDS, & CHAT */}
             <div className="lg:col-span-1 space-y-6">
               <PomodoroTimer roomId={selectedRoomId} onRunningChange={setIsFlowActive} />
-              
               <AmbientSoundscape roomId={selectedRoomId} />
-              
-              <div className="bg-gradient-to-br from-[#7c3aed] to-[#4c1d95] rounded-[2.5rem] shadow-xl p-6 text-white border border-white/10">
-                <RoomSidebar roomId={selectedRoomId} isRunning={true} onLeave={() => setSelectedRoomId(null)} />
-              </div>
-              
-              <EncryptedChat roomId={selectedRoomId} roomCode={currentRoomCode} />
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ===== MAIN DASHBOARD VIEW ===== */
-        <div className="space-y-8">
-          
-          {/* ANALYTICS WIDGETS SECTION */}
-          <div>
-            <div className="mb-4">
-              <span className="text-[#f0abfc] text-xs font-bold tracking-[0.2em] uppercase">05 — Dashboard</span>
-              <h2 className="text-3xl font-black mt-1 mb-1 tracking-tighter">Analytics Widgets</h2>
-              <p className="text-purple-200/80 text-sm">Key metrics displayed with personality — not just numbers, actionable insights.</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-purple-500"></div>
-                <div className="text-sm font-semibold text-slate-400">Pomodoros Today</div>
-                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.pomodorosToday}</div>
-                <div className={`text-xs font-bold ${userStats.pomodoroTrendColor}`}>
-                  {userStats.pomodoroTrend}
-                </div>
-                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🍅</span>
-              </div>
-
-              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-400"></div>
-                <div className="text-sm font-semibold text-slate-400">Study Streak</div>
-                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.streak}d</div>
-                <div className="text-xs font-bold text-emerald-500">↑ Personal best!</div>
-                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🔥</span>
-              </div>
-
-              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500"></div>
-                <div className="text-sm font-semibold text-slate-400">Flashcard Accuracy</div>
-                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.flashcardAccuracy}%</div>
-                <div className="text-xs font-bold text-emerald-500">↑ +5% this week</div>
-                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">🧠</span>
-              </div>
-
-              <div className="relative bg-white rounded-3xl p-6 shadow-lg border border-slate-100 overflow-hidden text-slate-800 transition hover:-translate-y-1 hover:shadow-xl">
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-rose-500"></div>
-                <div className="text-sm font-semibold text-slate-400">Hours This Week</div>
-                <div className="text-5xl font-black text-[#1a0533] mt-2 mb-4 tracking-tighter">{userStats.hoursThisWeek}h</div>
-                <div className="text-xs font-bold text-rose-500">↓ Goal: 25h</div>
-                <span className="absolute -right-2 -bottom-2 text-6xl opacity-10 drop-shadow-sm grayscale">⏰</span>
+              <div className="bg-white/5 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-1 shadow-2xl">
+                <EncryptedChat roomId={selectedRoomId} roomCode={currentRoomCode} />
               </div>
             </div>
           </div>
-
-          {/* LOWER DASHBOARD CONTENT */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <StudyTracker />
+        ) : (
+          /* ==========================================================
+             MAIN DASHBOARD: OVERVIEW, DECKS & LIBRARY
+             ========================================================== */
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start animate-in fade-in duration-500">
+            <div className="lg:col-span-3 space-y-8">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FlashcardManager basePath={`users/${user?.uid}`} title="My Private Decks" />
-                  <div className="glass-card p-6 flex flex-col justify-center items-center text-center">
-                      <h3 className="text-xl font-bold mb-2">Need a Break?</h3>
-                      <p className="text-sm opacity-80 mb-4">Review your private flashcards or join a room to study with friends.</p>
+              {/* ANALYTICS */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: "Pomodoros", val: userStats.pomodorosToday, color: "border-purple-400" },
+                  { label: "Streak", val: `${userStats.streak}d`, color: "border-amber-400" },
+                  { label: "Accuracy", val: `${userStats.flashcardAccuracy}%`, color: "border-emerald-400" },
+                  { label: "Total Hours", val: `${userStats.hoursThisWeek}h`, color: "border-rose-400" }
+                ].map((item, i) => (
+                  <div key={i} className={`bg-white/90 rounded-3xl p-6 shadow-xl border-t-4 ${item.color} text-slate-800 hover:-translate-y-1 transition-transform`}>
+                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</div>
+                    <div className="text-3xl font-black">{item.val}</div>
                   </div>
+                ))}
+              </div>
+
+              {/* HEATMAP */}
+              <div className={`${glassCard} p-8`}>
+                  <h2 className="text-xl font-black text-slate-800 mb-6 tracking-tight uppercase">Activity Map</h2>
+                  <StudyTracker />
               </div>
               
-              <UniversalLibrary />
+              {/* DECKS & GLOBAL LIBRARY */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+                <div className="bg-white/80 backdrop-blur-3xl border border-white/30 shadow-2xl rounded-[2.5rem] p-8 flex flex-col h-[600px]">
+                  {activeDeck ? (
+                    <FlashcardDeck deckName={activeDeck.name} collectionPath={`users/${user?.uid}/decks/${activeDeck.id}/cards`} onBack={() => setActiveDeck(null)} />
+                  ) : (
+                    <>
+                      <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase mb-6">Private Decks</h2>
+                      <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                        <FlashcardManager basePath={`users/${user?.uid}`} title="" onSelectDeck={(deck) => setActiveDeck(deck)} />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-[2.5rem] p-8 flex flex-col h-[600px]">
+                  <h2 className="text-xl font-black text-white tracking-tight uppercase mb-6">Global Library</h2>
+                  <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                    <UniversalLibrary />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="lg:col-span-1 space-y-6">
-               <div className="glass-card p-6">
-                <h2 className="text-xl font-bold mb-4 tracking-widest text-[#f0abfc]">ROOM CONTROLS</h2>
-                <div className="space-y-6">
+            {/* SIDEBAR: ROOM LIST & ACTIONS */}
+            <div className="lg:col-span-1 space-y-6 sticky top-6">
+              <div className="bg-white/10 backdrop-blur-2xl border border-white/20 p-6 rounded-[2.5rem] shadow-2xl">
+                <h2 className="text-[10px] font-black tracking-[0.3em] text-[#f0abfc] uppercase mb-4 px-2">Management</h2>
+                <div className="flex flex-col gap-4">
                   <CreateRoom />
-                  <div className="border-t border-white/10 pt-6">
-                    <JoinRoom />
-                  </div>
+                  <div className="border-t border-white/5 pt-4"><JoinRoom /></div>
                 </div>
               </div>
-
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2.5rem] shadow-xl">
-                <h2 className="text-xl font-bold mb-6 tracking-widest text-[#f0abfc]">YOUR STUDY ROOMS</h2>
+              
+              <div className="bg-white/10 backdrop-blur-2xl border border-white/20 p-6 rounded-[2.5rem] shadow-2xl">
+                <h2 className="text-lg font-black mb-6 tracking-widest text-[#f0abfc] uppercase text-center italic">Active Rooms</h2>
                 <RoomList onSelectRoom={enterRoom} />
               </div>
             </div>
           </div>
-
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

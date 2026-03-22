@@ -46,24 +46,25 @@ function JoinRoom() {
   };
 
   return (
-    <div className="mb-6 bg-white/10 p-4 rounded-lg shadow-sm border border-white/20">
-      <h2 className="text-lg font-bold text-white mb-2">Have a Code?</h2>
-      <p className="text-xs text-purple-200 mb-3">
+    <div className="w-full">
+      <h3 className="text-lg font-bold text-white mb-2">Have a Code?</h3>
+      <p className="text-xs text-purple-200 mb-4 uppercase tracking-wider opacity-80">
         Enter the 6-character Room Code to join.
       </p>
       
-      <div className="flex gap-2">
+      {/* Stacked layout ensures it stays inside the Sidebar Grid */}
+      <div className="flex flex-col gap-3">
         <input
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
           placeholder="e.g. HX92KP"
-          className="border border-white/20 bg-white/10 text-white placeholder-purple-200 p-2 rounded flex-grow focus:outline-none focus:border-purple-300 font-mono text-sm uppercase"
+          className="w-full border border-white/20 bg-white/5 text-white placeholder-purple-300/50 p-3 rounded-xl focus:outline-none focus:border-purple-400 font-mono text-sm uppercase transition-all"
           maxLength={6}
         />
         <button
           onClick={handleJoinRoom}
           disabled={loading}
-          className="bg-emerald-500 hover:bg-emerald-400 text-white px-4 py-2 rounded font-semibold transition whitespace-nowrap"
+          className="w-full bg-emerald-500 hover:bg-emerald-400 text-white py-3 rounded-xl font-bold transition shadow-lg active:scale-95 whitespace-nowrap"
         >
           {loading ? "Joining..." : "Join Room"}
         </button>

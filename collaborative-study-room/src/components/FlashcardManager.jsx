@@ -3,7 +3,6 @@ import { collection, query, orderBy, onSnapshot, doc, deleteDoc, addDoc, serverT
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 
-// Added onSelectDeck prop here
 function FlashcardManager({ basePath, title, onSelectDeck }) {
   const { user } = useAuth();
   const [decks, setDecks] = useState([]);
@@ -48,16 +47,20 @@ function FlashcardManager({ basePath, title, onSelectDeck }) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* HEADER SECTION */}
       <div className="flex justify-between items-center mb-6 px-2">
-        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{title}</h2>
+        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+          MY STUDY DECKS
+        </h2>
         <button 
           onClick={() => setShowModal(!showModal)} 
           className="bg-[#0f172a] text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg"
         >
-          {showModal ? "CANCEL" : "+ NEW FOLDER"}
+          {showModal ? "CANCEL" : "+ NEW DECK"}
         </button>
       </div>
 
+      {/* CREATE DECK FORM */}
       {showModal && (
         <div className="mb-8 p-6 bg-slate-50/80 border border-slate-100 rounded-[2.5rem] animate-in fade-in slide-in-from-top duration-300">
           <form onSubmit={handleCreateDeck} className="space-y-4">
@@ -65,28 +68,31 @@ function FlashcardManager({ basePath, title, onSelectDeck }) {
               autoFocus
               value={newDeckName}
               onChange={(e) => setNewDeckName(e.target.value)}
-              placeholder="Folder Name (e.g. Biology, React Info)"
+              placeholder="Deck Name (e.g. Biology, React Hooks)"
               className="w-full p-4 bg-white border border-slate-100 rounded-2xl focus:outline-none focus:border-indigo-500 font-bold text-slate-800 placeholder:text-slate-300 shadow-inner"
             />
             <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-[0.98]">
-              CREATE FOLDER
+              CREATE DECK
             </button>
           </form>
         </div>
       )}
 
+      {/* GRID LAYOUT */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {decks.map((deck) => (
           <div 
             key={deck.id}
-            // Logic to open the deck
             onClick={() => onSelectDeck && onSelectDeck(deck)}
-            className="group relative bg-white p-5 rounded-2xl shadow-sm border-t-4 border-emerald-500 hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
+            className="group relative bg-white p-6 rounded-[2rem] shadow-sm border-t-4 border-emerald-500 hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
           >
             <div className="flex justify-between items-start mb-4">
+              {/* Deck/Cards Icon */}
               <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="9" y1="21" x2="9" y2="9"/>
                 </svg>
               </div>
 
@@ -100,12 +106,23 @@ function FlashcardManager({ basePath, title, onSelectDeck }) {
               </button>
             </div>
 
-            <h3 className="font-black text-slate-800 text-sm truncate mb-1 uppercase tracking-tight">{deck.name}</h3>
-            {/* Styled "Open Deck" to look like a real link */}
-            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest group-hover:underline">Open Deck →</span>
+            <h3 className="font-black text-slate-800 text-sm truncate mb-1 uppercase tracking-tight">
+              {deck.name}
+            </h3>
+            
+            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest group-hover:underline">
+              Open Deck →
+            </span>
           </div>
         ))}
       </div>
+
+      {/* EMPTY STATE */}
+      {decks.length === 0 && !showModal && (
+        <div className="text-center py-20 opacity-20">
+           <p className="font-black italic tracking-widest text-lg">NO DECKS CREATED</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ function VideoRoom({ roomId }) {
     if (joinedRef.current) return; 
 
     const startMeeting = async () => {
-      // THE FIX: Ensure AppID is a Number. strings cause WebSocket 403/closed errors.
+      // Ensure AppID is a Number. strings cause WebSocket 403/closed errors.
       const appID = Number(import.meta.env.VITE_ZEGO_APP_ID);
       const serverSecret = import.meta.env.VITE_ZEGO_SERVER_SECRET;
 
@@ -35,15 +35,18 @@ function VideoRoom({ roomId }) {
           zp.joinRoom({
             container: videoContainerRef.current,
             scenario: { mode: ZegoUIKitPrebuilt.GroupCall },
+            
+            // All requested options enabled
             showScreenSharingButton: true,      
             showPreJoinView: false,             
             turnOnCameraWhenJoining: false,     
             turnOnMicrophoneWhenJoining: false, 
-            showTextChat: false,
-            showUserList: false,
+            showTextChat: true,           
+            showUserList: true,           
+            showRoomDetailsButton: true,  
+            showLayoutButton: true,       
             maxUsers: 4,
             layout: "Grid",
-            showLayoutButton: false,
           });
         }
       } catch (error) {
@@ -57,8 +60,11 @@ function VideoRoom({ roomId }) {
   }, [roomId, user]);
 
   return (
-    <div className="bg-[#1a1b4b] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col h-full border border-white/10 relative w-full">
-      <div className="flex items-center justify-between px-6 py-4 bg-[#1a1b4b] z-20 border-b border-white/5">
+    // FIXED: Removed overflow-hidden from this container so right-side buttons don't get clipped!
+    <div className="bg-[#1a1b4b] rounded-[2.5rem] shadow-2xl flex flex-col h-full border border-white/10 relative w-full">
+      
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-6 py-4 bg-[#1a1b4b] rounded-t-[2.5rem] z-20 border-b border-white/5">
         <div className="flex flex-col">
           <h2 className="text-[10px] font-black text-white tracking-[0.2em] uppercase italic opacity-80">Live Study Group</h2>
           <span className="text-[8px] text-indigo-300 font-bold uppercase mt-1">ROOM: {roomId}</span>
@@ -69,27 +75,13 @@ function VideoRoom({ roomId }) {
         </div>
       </div>
 
-      <div className="flex-grow relative w-full bg-slate-950/40 overflow-hidden">
-        <div ref={videoContainerRef} className="zego-view-container absolute inset-0 w-full h-full" />
+      <div className="flex-grow relative w-full bg-[#111114] rounded-b-[2.5rem]">
+        <div 
+          ref={videoContainerRef} 
+          className="absolute inset-0 w-full h-full" 
+        />
       </div>
 
-      <style>{`
-        .zego-view-container div { border-radius: 0 !important; }
-        .zego-view-container [class*="PreJoinView"], 
-        .zego-view-container [class*="Modal"],
-        .zego-view-container [class*="Equipment"] {
-          max-width: 85% !important;
-          transform: scale(0.85) !important;
-          margin: auto !important;
-          position: absolute !important;
-          top: 50% !important;
-          left: 50% !important;
-          translate: -50% -50% !important;
-          background: white !important;
-          color: #1a1b4b !important;
-          border-radius: 24px !important;
-        }
-      `}</style>
     </div>
   );
 }
